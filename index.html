@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>超级无敌装包收益计算器</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --panel:#111824; --panel2:#0d1520; --line:#213045; --line2:#1d2a3b;
+      --text:#e8eef6; --muted:#a8bdd8; --ok:#7dffb2; --bad:#ff7d7d; --accent:#4aa3ff;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "PingFang SC", "Microsoft YaHei", Arial;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text)}
+    .wrap{max-width:1180px;margin:0 auto;padding:18px}
+    h1{font-size:22px;margin:0 0 8px}
+    h2{font-size:15px;margin:18px 0 10px;color:#cfe3ff}
+    .sub{color:var(--muted);font-size:13px}
+    .card{background:var(--panel);border:1px solid var(--line2);border-radius:16px;padding:14px;box-shadow:0 10px 22px rgba(0,0,0,.25)}
+    .grid{display:grid;gap:10px}
+    .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+    .col{display:flex;flex-direction:column;gap:8px}
+    label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+    input,select,button,textarea{
+      width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);
+      background:var(--panel2);color:var(--text);outline:none
+    }
+    textarea{min-height:130px;resize:vertical}
+    button{cursor:pointer;width:auto}
+    button.primary{background:linear-gradient(90deg,var(--accent),#7dffb2);color:#07111d;border:none;font-weight:700}
+    button.secondary{background:var(--panel2);color:var(--text)}
+    .pill{
+      display:inline-block;padding:5px 9px;border-radius:999px;border:1px solid #2a3c57;
+      background:var(--panel2);font-size:12px;color:#cfe3ff
+    }
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace}
+    .muted{color:var(--muted);font-size:12px}
+    .sep{height:1px;background:var(--line2);margin:12px 0}
+    .note{padding:10px;border-radius:12px;background:var(--panel2);border:1px dashed #2a3c57}
+    .bar{height:12px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;overflow:hidden}
+    .bar>div{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#7dffb2)}
+    .mixbar{height:14px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;overflow:hidden;display:flex}
+    .mixseg{height:100%}
+    .legend{display:flex;flex-wrap:wrap;gap:8px}
+    .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+    .legend-swatch{width:10px;height:10px;border-radius:999px;display:inline-block;flex:0 0 10px}
+    .ok{color:var(--ok)} .bad{color:var(--bad)}
+    .kpi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .kpi .card{padding:12px}
+    .big{font-size:22px;font-weight:800}
+    .small{font-size:11px;color:var(--muted)}
+    .item-card{padding:12px;border:1px solid var(--line2);background:rgba(255,255,255,.01);border-radius:14px}
+    .statline{display:flex;flex-wrap:wrap;gap:6px}
+    .right{text-align:right}
+    .result-block{white-space:pre-wrap;line-height:1.55}
+    .badge{padding:3px 7px;border-radius:999px;font-size:11px;border:1px solid var(--line)}
+    .good{color:var(--ok);border-color:rgba(125,255,178,.35);background:rgba(125,255,178,.08)}
+    .warn{color:#ffd27d;border-color:rgba(255,210,125,.35);background:rgba(255,210,125,.08)}
+    @media (max-width: 900px){
+      .g4,.g3,.g2,.kpi{grid-template-columns:1fr}
+      .row.stack{flex-direction:column;align-items:stretch}
+      .right{text-align:left}
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🧠 超级无敌装包收益计算器</h1>
+  <div class="sub">用户只填“岛上刷了什么”，计算器自动给出 <b>最优装包方案</b>、<b>每种拿几下/几件</b>、<b>有/无 UI 缝隙对比</b>、<b>最终到手</b>。</div>
+
+  <h2>基础设置</h2>
+  <div class="card grid g4">
+    <div>
+      <label>人数</label>
+      <select id="players">
+        <option value="1">1</option>
+        <option value="2" selected>2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+      <div class="muted">容量 = 1800 × 人数</div>
+    </div>
+
+    <div>
+      <label>分红比例（0~1）</label>
+      <input id="cut" type="number" step="0.01" min="0" max="1" value="0.85" />
+      <div class="row" style="justify-content:flex-start;gap:8px;margin-top:6px">
+        <input id="ignoreCut" type="checkbox" style="width:auto;padding:0" />
+        <span class="muted">忽略分红（=1）</span>
+      </div>
+    </div>
+
+    <div>
+      <label>难度</label>
+      <select id="difficulty">
+        <option value="normal" selected>普通</option>
+        <option value="hard">困难（主目标 × 110%）</option>
+      </select>
+      <div class="muted">精英：普通 +50,000；困难 +100,000</div>
+    </div>
+
+    <div>
+      <label>精英</label>
+      <div class="row" style="justify-content:flex-start;gap:8px;margin-top:10px">
+        <input id="elite" type="checkbox" style="width:auto;padding:0" />
+        <span class="muted">勾上就计入精英奖金</span>
+      </div>
+    </div>
+  </div>
+
+  <h2>主目标</h2>
+  <div class="card grid g3">
+    <div>
+      <label>主目标类型</label>
+      <select id="primaryType">
+        <option value="tequila" selected>龙舌兰（630,000；次要 +20%）</option>
+        <option value="ruby">项链（700,000；次要 +10%）</option>
+        <option value="bonds">债券（770,000；次要 +5%）</option>
+        <option value="pink">粉钻（1,300,000；次要 +0%）</option>
+        <option value="panther">金豹（1,900,000；次要 +0%）</option>
+      </select>
+    </div>
+    <div>
+      <label>主目标金额（自动）</label>
+      <input id="primaryAmount" type="number" disabled value="630000" />
+    </div>
+    <div class="note">
+      <div class="row">
+        <span class="pill">次要加成</span>
+        <span id="boostLabel" class="pill mono">+20%</span>
+      </div>
+      <div class="muted" style="margin-top:6px">主目标加成提示：龙舌兰 +20%，项链 +10%，债券 +5%，其余 0%</div>
+      <div class="muted" style="margin-top:6px">最终公式：<span class="mono">(主 + 次 + 20000) × 0.88 × 分红 + 精英</span></div>
+    </div>
+  </div>
+
+  <h2>物品名字与岛上刷新</h2>
+  <div class="card grid g3">
+    <div class="item-card">
+      <label>厕纸 名字</label>
+      <input id="name1" value="厕纸" />
+      <label style="margin-top:10px">岛上有几堆</label>
+      <input id="pile1" type="number" min="0" step="1" value="0" />
+      <div class="statline" style="margin-top:10px">
+        <span class="pill">10下/堆</span><span class="pill">450重/堆</span><span class="pill">78,750/堆</span>
+      </div>
+    </div>
+
+    <div class="item-card">
+      <label>绿茶 名字</label>
+      <input id="name2" value="绿茶" />
+      <label style="margin-top:10px">岛上有几堆</label>
+      <input id="pile2" type="number" min="0" step="1" value="0" />
+      <div class="statline" style="margin-top:10px">
+        <span class="pill">10下/堆</span><span class="pill">675重/堆</span><span class="pill">130,500/堆</span>
+      </div>
+    </div>
+
+    <div class="item-card">
+      <label>可可粉 名字</label>
+      <input id="name3" value="可可粉" />
+      <label style="margin-top:10px">岛上有几堆</label>
+      <input id="pile3" type="number" min="0" step="1" value="0" />
+      <div class="statline" style="margin-top:10px">
+        <span class="pill">10下/堆</span><span class="pill">900重/堆</span><span class="pill">198,000/堆</span>
+      </div>
+    </div>
+
+    <div class="item-card">
+      <label>金条 名字</label>
+      <input id="name4" value="金条" />
+      <label style="margin-top:10px">岛上有几堆</label>
+      <input id="pile4" type="number" min="0" step="1" value="0" />
+      <div class="statline" style="margin-top:10px">
+        <span class="pill">7下/堆</span><span class="pill">1200重/堆</span><span class="pill">328,333/堆</span>
+      </div>
+    </div>
+
+    <div class="item-card">
+      <label>名画 名字</label>
+      <input id="name5" value="名画" />
+      <label style="margin-top:10px">岛上有几件</label>
+      <input id="unit5" type="number" min="0" step="1" value="0" />
+      <div class="statline" style="margin-top:10px">
+        <span class="pill">整件拿</span><span class="pill">900重/件</span><span class="pill">157,500/件</span>
+      </div>
+      <div class="small" style="margin-top:8px">名画不参与 UI 缝隙最后一下。</div>
+      <div class="small" style="margin-top:6px">单人模式下，金条会自动禁用。</div>
+    </div>
+
+    <div class="note">
+      <div class="muted">
+        <b>UI 缝隙规则</b><br/>
+        允许额外多拿 <b>1 下</b>（只能 1 次），来源可以是厕纸 / 绿茶 / 可可粉 / 金条。<br/>
+        触发条件等价于：<span class="mono">最终超重 &lt; 最后一下的每下重量</span><br/>
+        也就是：最后一下之前 UI 还显示“没满”，所以还能再塞一下。
+      </div>
+    </div>
+  </div>
+
+  <div class="sep"></div>
+  <div class="row stack">
+    <div class="row" style="justify-content:flex-start;gap:10px">
+      <button id="run" class="primary">计算超级无敌最优方案</button>
+      <button id="example" class="secondary">填入示例</button>
+      <button id="copySummary" class="secondary">复制结果摘要</button>
+    </div>
+    <div class="muted right">会同时算：<b>无 UI 缝隙最优</b> vs <b>带 UI 缝隙最优</b></div>
+  </div>
+
+  <h2>结果总览</h2>
+  <div class="kpi">
+    <div class="card">
+      <div class="small">最优总到手</div>
+      <div id="kpiFinal" class="big mono">0</div>
+      <div id="kpiMode" class="small">未计算</div>
+    </div>
+    <div class="card">
+      <div class="small">最优次要（含加成）</div>
+      <div id="kpiSecondary" class="big mono">0</div>
+      <div id="kpiGapGain" class="small">UI 缝隙收益增量：0</div>
+    </div>
+    <div class="card">
+      <div class="small">重量</div>
+      <div id="kpiWeight" class="big mono">0 / 0</div>
+      <div id="kpiOver" class="small">未超重</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:10px">
+    <div class="row">
+      <span class="pill">最优方案重量条</span>
+      <span id="weightLabel" class="pill mono">0 / 0</span>
+    </div>
+    <div class="bar" style="margin-top:8px"><div id="barFill"></div></div>
+    <div id="weightStatus" class="muted" style="margin-top:8px"></div>
+    <div class="small" style="margin-top:10px">推荐方案包内组成演示</div>
+    <div id="mixBar" class="mixbar" style="margin-top:8px"></div>
+    <div id="mixLegend" class="legend" style="margin-top:8px"></div>
+  </div>
+
+  <h2>方案对比</h2>
+  <div class="grid g2">
+    <div class="card">
+      <div class="row">
+        <b>方案 A：不使用 UI 缝隙</b>
+        <span class="badge warn">稳妥</span>
+      </div>
+      <div class="sep"></div>
+      <div class="small">方案 A 包内组成演示</div>
+      <div id="planABar" class="mixbar" style="margin:8px 0"></div>
+      <div id="planALegend" class="legend" style="margin-bottom:8px"></div>
+      <div id="planA" class="result-block mono"></div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <b>方案 B：允许 UI 缝隙</b>
+        <span class="badge good">冲收益</span>
+      </div>
+      <div class="sep"></div>
+      <div class="small">方案 B 包内组成演示</div>
+      <div id="planBBar" class="mixbar" style="margin:8px 0"></div>
+      <div id="planBLegend" class="legend" style="margin-bottom:8px"></div>
+      <div id="planB" class="result-block mono"></div>
+    </div>
+  </div>
+
+  <h2>推荐方案摘要</h2>
+  <div class="card">
+    <div id="summary" class="result-block mono"></div>
+  </div>
+</div>
+
+<script>
+const PRIMARY_NORMAL = {
+  tequila: 630000,
+  ruby: 700000,
+  bonds: 770000,
+  pink: 1300000,
+  panther: 1900000
+};
+const BOOST = {
+  tequila: 0.20,
+  ruby: 0.10,
+  bonds: 0.05,
+  pink: 0.00,
+  panther: 0.00
+};
+
+// 统一缩放成整数，便于 DP
+const S = 14; // weight scale
+const V = 7;  // value scale
+
+const ITEM = {
+  i1: { clicksPerPile: 10, wPile: 450,  vPile:  78750 },
+  i2: { clicksPerPile: 10, wPile: 675,  vPile: 130500 },
+  i3: { clicksPerPile: 10, wPile: 900,  vPile: 198000 },
+  i4: { clicksPerPile:  7, wPile: 1200, vPile: 328333 },
+  i5: { units: true, wUnit: 900, vUnit: 157500 }
+};
+
+const $ = (id)=>document.getElementById(id);
+const clamp = (n,a,b)=>Math.max(a,Math.min(b,n));
+const fmt = (n)=>Math.round(n).toLocaleString("zh-CN");
+const fmt2 = (n)=>(Math.round(n*100)/100).toLocaleString("zh-CN");
+
+const BITS = 14n;
+const MASK = (1n<<BITS) - 1n;
+const SHIFT = [0n, BITS, BITS*2n, BITS*3n, BITS*4n];
+
+function packCounts(c1,c2,c3,c4,u5){
+  return (BigInt(c1)&MASK)
+    | ((BigInt(c2)&MASK) << SHIFT[1])
+    | ((BigInt(c3)&MASK) << SHIFT[2])
+    | ((BigInt(c4)&MASK) << SHIFT[3])
+    | ((BigInt(u5)&MASK) << SHIFT[4]);
+}
+function unpackCounts(p){
+  return {
+    c1: Number((p >> SHIFT[0]) & MASK),
+    c2: Number((p >> SHIFT[1]) & MASK),
+    c3: Number((p >> SHIFT[2]) & MASK),
+    c4: Number((p >> SHIFT[3]) & MASK),
+    u5: Number((p >> SHIFT[4]) & MASK),
+  };
+}
+function addToPack(p, idx, add){
+  const cur = (p >> SHIFT[idx]) & MASK;
+  const next = cur + BigInt(add);
+  const cleared = p & ~(MASK << SHIFT[idx]);
+  return cleared | ((next & MASK) << SHIFT[idx]);
+}
+
+function getNames(){
+  return {
+    i1: $("name1").value.trim() || "厕纸",
+    i2: $("name2").value.trim() || "绿茶",
+    i3: $("name3").value.trim() || "可可粉",
+    i4: $("name4").value.trim() || "金条",
+    i5: $("name5").value.trim() || "名画",
+  };
+}
+
+function syncPrimaryUI(){
+  const type = $("primaryType").value;
+  const diff = $("difficulty").value;
+  const base = PRIMARY_NORMAL[type] || 0;
+  const primary = diff === "hard" ? base * 1.10 : base;
+  $("primaryAmount").value = Math.round(primary);
+  $("boostLabel").textContent = `+${Math.round((BOOST[type] || 0) * 100)}%`;
+}
+
+function scaledClickWeight(key){
+  const it = ITEM[key];
+  return Math.round((it.wPile / it.clicksPerPile) * S);
+}
+function scaledClickValue(key){
+  const it = ITEM[key];
+  return Math.round((it.vPile / it.clicksPerPile) * V);
+}
+function humanClickWeight(key){
+  return scaledClickWeight(key) / S;
+}
+function humanClickValue(key){
+  return scaledClickValue(key) / V;
+}
+
+function buildChunks(capClicks1, capClicks2, capClicks3, capClicks4, capUnits5){
+  const chunks = [];
+  function addClickItem(key, idxInPack, capClicks){
+    let remain = capClicks;
+    let k = 1;
+    while(remain > 0){
+      const take = Math.min(k, remain);
+      chunks.push({
+        kind: key,
+        packIdx: idxInPack,
+        qty: take,
+        w: scaledClickWeight(key) * take,
+        v: scaledClickValue(key) * take
+      });
+      remain -= take;
+      k *= 2;
+    }
+  }
+  addClickItem("i1", 0, capClicks1);
+  addClickItem("i2", 1, capClicks2);
+  addClickItem("i3", 2, capClicks3);
+  addClickItem("i4", 3, capClicks4);
+
+  let remain = capUnits5;
+  let k = 1;
+  while(remain > 0){
+    const take = Math.min(k, remain);
+    chunks.push({
+      kind: "i5",
+      packIdx: 4,
+      qty: take,
+      w: ITEM.i5.wUnit * S * take,
+      v: ITEM.i5.vUnit * V * take
+    });
+    remain -= take;
+    k *= 2;
+  }
+  return chunks;
+}
+
+function solveBase(capacityScaled, caps){
+  const chunks = buildChunks(caps.c1, caps.c2, caps.c3, caps.c4, caps.u5);
+  const NEG = -1e18;
+  const dp = new Array(capacityScaled + 1).fill(NEG);
+  const pack = new Array(capacityScaled + 1).fill(0n);
+  dp[0] = 0;
+  pack[0] = packCounts(0,0,0,0,0);
+
+  for(const ch of chunks){
+    for(let w = capacityScaled; w >= ch.w; w--){
+      const prev = w - ch.w;
+      if(dp[prev] === NEG) continue;
+      const cand = dp[prev] + ch.v;
+      // 同价值时偏好更重（更接近满背包）
+      if(cand > dp[w] || (cand === dp[w] && prev >= 0)){
+        dp[w] = cand;
+        pack[w] = addToPack(pack[prev], ch.packIdx, ch.qty);
+      }
+    }
+  }
+
+  let bestW = 0;
+  let bestVal = dp[0];
+  let bestPack = pack[0];
+  for(let w = 1; w <= capacityScaled; w++){
+    if(dp[w] > bestVal || (dp[w] === bestVal && w > bestW)){
+      bestVal = dp[w];
+      bestW = w;
+      bestPack = pack[w];
+    }
+  }
+  return { dp, pack, bestW, bestVal, bestPack };
+}
+
+function solveWithGap(capacityScaled, caps, base){
+  let best = {
+    ok: false,
+    finalVal: base.bestVal,
+    baseW: base.bestW,
+    finalW: base.bestW,
+    finalPack: base.bestPack,
+    lastKind: null,
+    overScaled: 0
+  };
+
+  const info = {
+    i1: { wClick: scaledClickWeight("i1"), vClick: scaledClickValue("i1"), cap: caps.c1, packIdx: 0 },
+    i2: { wClick: scaledClickWeight("i2"), vClick: scaledClickValue("i2"), cap: caps.c2, packIdx: 1 },
+    i3: { wClick: scaledClickWeight("i3"), vClick: scaledClickValue("i3"), cap: caps.c3, packIdx: 2 },
+    i4: { wClick: scaledClickWeight("i4"), vClick: scaledClickValue("i4"), cap: caps.c4, packIdx: 3 },
+  };
+
+  for(const k of ["i1","i2","i3","i4"]){
+    if(info[k].cap <= 0) continue;
+    const lo = Math.max(0, capacityScaled - info[k].wClick + 1);
+    for(let wBase = lo; wBase <= capacityScaled; wBase++){
+      const baseVal = base.dp[wBase];
+      if(baseVal < -1e17) continue;
+
+      const used = unpackCounts(base.pack[wBase]);
+      const usedClicks = (k==="i1")?used.c1:(k==="i2")?used.c2:(k==="i3")?used.c3:used.c4;
+      if(usedClicks >= info[k].cap) continue;
+
+      const wFinal = wBase + info[k].wClick;
+      const over = wFinal - capacityScaled;
+      if(!(over > 0 && over < info[k].wClick)) continue;
+
+      const valFinal = baseVal + info[k].vClick;
+      if(valFinal > best.finalVal || (valFinal === best.finalVal && wFinal > best.finalW)){
+        best = {
+          ok: true,
+          finalVal: valFinal,
+          baseW: wBase,
+          finalW: wFinal,
+          finalPack: addToPack(base.pack[wBase], info[k].packIdx, 1),
+          lastKind: k,
+          overScaled: over
+        };
+      }
+    }
+  }
+  return best;
+}
+
+function makePlanObj(raw, names, capacityHuman, boost, cut, primary, eliteBonus){
+  const counts = unpackCounts(raw.finalPack);
+  const secondaryBase = raw.finalVal / V;
+  const secondaryBoosted = secondaryBase * (1 + boost);
+  const weight = raw.finalW / S;
+  const over = Math.max(0, weight - capacityHuman);
+  const final = (primary + secondaryBoosted + 20000) * 0.88 * cut + eliteBonus;
+
+  const pileUsage = {
+    i1: counts.c1 / ITEM.i1.clicksPerPile,
+    i2: counts.c2 / ITEM.i2.clicksPerPile,
+    i3: counts.c3 / ITEM.i3.clicksPerPile,
+    i4: counts.c4 / ITEM.i4.clicksPerPile,
+    i5: counts.u5
+  };
+
+  return {
+    ...raw,
+    counts,
+    secondaryBase,
+    secondaryBoosted,
+    weight,
+    over,
+    final,
+    pileUsage,
+    gapDesc: raw.ok ? `${names[raw.lastKind]} 作为最后一下` : "未使用 UI 缝隙",
+  };
+}
+
+function renderPlan(plan, names, caps, isGapMode){
+  const lastExtra = plan.ok ? `\nUI 缝隙：触发\n最后一下：${names[plan.lastKind]}\n最后一下每下重量：${fmt2(humanClickWeight(plan.lastKind))}\n超重：${fmt2(plan.over)}\n最后一下前剩余：${fmt2(humanClickWeight(plan.lastKind) - plan.over)}` : `\nUI 缝隙：未触发`;
+  return `次要（原始）：${fmt(plan.secondaryBase)}
+次要（含加成）：${fmt(plan.secondaryBoosted)}
+总到手：${fmt(plan.final)}
+
+拿取方案：
+- ${names.i1}：${plan.counts.c1} 下（${fmt2(plan.pileUsage.i1)} 堆 / 上限 ${fmt2(caps.c1 / ITEM.i1.clicksPerPile)} 堆）
+- ${names.i2}：${plan.counts.c2} 下（${fmt2(plan.pileUsage.i2)} 堆 / 上限 ${fmt2(caps.c2 / ITEM.i2.clicksPerPile)} 堆）
+- ${names.i3}：${plan.counts.c3} 下（${fmt2(plan.pileUsage.i3)} 堆 / 上限 ${fmt2(caps.c3 / ITEM.i3.clicksPerPile)} 堆）
+- ${names.i4}：${plan.counts.c4} 下（${fmt2(plan.pileUsage.i4)} 堆 / 上限 ${fmt2(caps.c4 / ITEM.i4.clicksPerPile)} 堆）
+- ${names.i5}：${plan.counts.u5} 件（上限 ${caps.u5} 件）
+
+重量：${fmt2(plan.weight)} / ${fmt2(plan.weight > 0 ? plan.weight - plan.over + (plan.over>0?0:0) : 0)}`
+    .replace(`/ ${fmt2(plan.weight > 0 ? plan.weight - plan.over + (plan.over>0?0:0) : 0)}`, '') + // remove placeholder trick
+`${lastExtra}`;
+}
+
+const ITEM_COLORS = {
+  i1: "#7cc8ff",
+  i2: "#7dffb2",
+  i3: "#f6b26b",
+  i4: "#ffd966",
+  i5: "#d5a6ff",
+};
+
+function getItemWeights(plan){
+  return {
+    i1: plan.counts.c1 * humanClickWeight("i1"),
+    i2: plan.counts.c2 * humanClickWeight("i2"),
+    i3: plan.counts.c3 * humanClickWeight("i3"),
+    i4: plan.counts.c4 * humanClickWeight("i4"),
+    i5: plan.counts.u5 * ITEM.i5.wUnit,
+  };
+}
+
+function renderComposition(barId, legendId, plan, names){
+  const bar = $(barId);
+  const legend = $(legendId);
+  if(!bar || !legend) return;
+  const weights = getItemWeights(plan);
+  const total = Object.values(weights).reduce((a,b)=>a+b,0);
+  if(total <= 0){
+    bar.innerHTML = `<div class="mixseg" style="width:100%;background:#1a2434"></div>`;
+    legend.innerHTML = `<span class="legend-item"><span class="legend-swatch" style="background:#1a2434"></span>空包</span>`;
+    return;
+  }
+  const order = ["i1","i2","i3","i4","i5"];
+  bar.innerHTML = order.filter(k=>weights[k] > 0).map(k=>{
+    const pct = weights[k] / total * 100;
+    return `<div class="mixseg" title="${names[k]} ${fmt2(weights[k])} 重" style="width:${pct}%;background:${ITEM_COLORS[k]}"></div>`;
+  }).join("");
+  legend.innerHTML = order.filter(k=>weights[k] > 0).map(k=>{
+    const pct = weights[k] / total * 100;
+    return `<span class="legend-item"><span class="legend-swatch" style="background:${ITEM_COLORS[k]}"></span>${names[k]} ${fmt2(weights[k])}重 / ${fmt2(pct)}%</span>`;
+  }).join("");
+}
+
+function renderPlanBetter(plan, names, caps, capacity){
+  const lines = [
+    `次要（原始）：${fmt(plan.secondaryBase)}`,
+    `次要（含加成）：${fmt(plan.secondaryBoosted)}`,
+    `总到手：${fmt(plan.final)}`,
+    ``,
+    `拿取方案：`,
+    `- ${names.i1}：${plan.counts.c1} 下（${fmt2(plan.pileUsage.i1)} 堆 / 上限 ${fmt2(caps.c1 / ITEM.i1.clicksPerPile)} 堆）`,
+    `- ${names.i2}：${plan.counts.c2} 下（${fmt2(plan.pileUsage.i2)} 堆 / 上限 ${fmt2(caps.c2 / ITEM.i2.clicksPerPile)} 堆）`,
+    `- ${names.i3}：${plan.counts.c3} 下（${fmt2(plan.pileUsage.i3)} 堆 / 上限 ${fmt2(caps.c3 / ITEM.i3.clicksPerPile)} 堆）`,
+    `- ${names.i4}：${plan.counts.c4} 下（${fmt2(plan.pileUsage.i4)} 堆 / 上限 ${caps.soloLock4 ? "0 堆；单人禁用" : `${fmt2(caps.c4 / ITEM.i4.clicksPerPile)} 堆`})`,
+    `- ${names.i5}：${plan.counts.u5} 件（上限 ${caps.u5} 件）`,
+    ``,
+    `重量：${fmt2(plan.weight)} / ${fmt2(capacity)}（超 ${fmt2(plan.over)}）`,
+  ];
+  if(plan.ok){
+    const clickW = humanClickWeight(plan.lastKind);
+    lines.push(`UI 缝隙：触发`);
+    lines.push(`最后一下：${names[plan.lastKind]}`);
+    lines.push(`最后一下每下重量：${fmt2(clickW)}`);
+    lines.push(`最后一下前剩余：${fmt2(clickW - plan.over)}`);
+  }else{
+    lines.push(`UI 缝隙：未触发`);
+  }
+  return lines.join("\n");
+}
+
+function compute(){
+  syncPrimaryUI();
+
+  const names = getNames();
+  const players = parseInt($("players").value, 10);
+  const capacity = 1800 * players;
+  const capacityScaled = capacity * S;
+
+  const cutRaw = parseFloat($("cut").value || "0");
+  const cut = $("ignoreCut").checked ? 1 : clamp(cutRaw, 0, 1);
+
+  const diff = $("difficulty").value;
+  const eliteBonus = $("elite").checked ? (diff === "hard" ? 100000 : 50000) : 0;
+  const primary = parseFloat($("primaryAmount").value || "0");
+  const boost = BOOST[$("primaryType").value] || 0;
+
+  const pile1 = Math.max(0, Math.floor(parseFloat($("pile1").value || "0")));
+  const pile2 = Math.max(0, Math.floor(parseFloat($("pile2").value || "0")));
+  const pile3 = Math.max(0, Math.floor(parseFloat($("pile3").value || "0")));
+  const pile4 = Math.max(0, Math.floor(parseFloat($("pile4").value || "0")));
+  const unit5 = Math.max(0, Math.floor(parseFloat($("unit5").value || "0")));
+
+  const caps = {
+    c1: pile1 * ITEM.i1.clicksPerPile,
+    c2: pile2 * ITEM.i2.clicksPerPile,
+    c3: pile3 * ITEM.i3.clicksPerPile,
+    c4: players === 1 ? 0 : (pile4 * ITEM.i4.clicksPerPile),
+    u5: unit5,
+    rawP1: pile1,
+    rawP2: pile2,
+    rawP3: pile3,
+    rawP4: pile4,
+    rawU5: unit5,
+    soloLock4: players === 1 && pile4 > 0
+  };
+
+  const base = solveBase(capacityScaled, caps);
+  const gap = solveWithGap(capacityScaled, caps, base);
+
+  const planA = makePlanObj({
+    ok:false,
+    finalVal: base.bestVal,
+    finalW: base.bestW,
+    finalPack: base.bestPack,
+    lastKind:null,
+    overScaled:0
+  }, names, capacity, boost, cut, primary, eliteBonus);
+
+  const planB = makePlanObj(gap.ok ? gap : {
+    ok:false,
+    finalVal: base.bestVal,
+    finalW: base.bestW,
+    finalPack: base.bestPack,
+    lastKind:null,
+    overScaled:0
+  }, names, capacity, boost, cut, primary, eliteBonus);
+
+  const chosen = (planB.secondaryBase > planA.secondaryBase || planB.final > planA.final) ? planB : planA;
+  const gain = planB.secondaryBoosted - planA.secondaryBoosted;
+  const gainFinal = planB.final - planA.final;
+
+  $("planA").textContent = renderPlanBetter(planA, names, caps, capacity);
+  $("planB").textContent = renderPlanBetter(planB, names, caps, capacity);
+  renderComposition("planABar", "planALegend", planA, names);
+  renderComposition("planBBar", "planBLegend", planB, names);
+
+  $("kpiFinal").textContent = fmt(chosen.final);
+  $("kpiMode").textContent = chosen.ok ? `推荐：使用 UI 缝隙（最后一下 ${names[chosen.lastKind]}）` : "推荐：不使用 UI 缝隙";
+  $("kpiSecondary").textContent = fmt(chosen.secondaryBoosted);
+  $("kpiGapGain").textContent = `UI 缝隙收益增量：${gainFinal > 0 ? "+" : ""}${fmt(gainFinal)}`;
+  $("kpiWeight").textContent = `${fmt2(chosen.weight)} / ${fmt2(capacity)}`;
+  $("kpiOver").textContent = chosen.over > 0 ? `超 ${fmt2(chosen.over)}` : "未超重";
+
+  $("weightLabel").textContent = `${fmt2(chosen.weight)} / ${fmt2(capacity)}（超 ${fmt2(chosen.over)}）`;
+  $("barFill").style.width = clamp((chosen.weight / capacity) * 100, 0, 140) + "%";
+  renderComposition("mixBar", "mixLegend", chosen, names);
+
+  if(chosen.ok){
+    const clickW = humanClickWeight(chosen.lastKind);
+    $("weightStatus").innerHTML = `<span class="ok">🧩 使用 UI 缝隙：最后一下来自 <b>${names[chosen.lastKind]}</b>；超重 ${fmt2(chosen.over)} &lt; 每下重量 ${fmt2(clickW)}；最后一下前剩余 ${fmt2(clickW - chosen.over)} &gt; 0</span>`;
+  }else{
+    $("weightStatus").innerHTML = `<span class="ok">✅ 推荐方案不需要 UI 缝隙</span>`;
+  }
+  if(caps.soloLock4){
+    $("weightStatus").innerHTML += `<br><span class="muted">单人模式下，${names.i4} 已自动禁用。</span>`;
+  }
+
+  const summaryLines = [
+    `推荐方案：${chosen.ok ? "使用 UI 缝隙" : "不使用 UI 缝隙"}`,
+    `总到手：${fmt(chosen.final)}`,
+    `次要（原始）：${fmt(chosen.secondaryBase)}`,
+    `次要（含加成）：${fmt(chosen.secondaryBoosted)}`,
+    `重量：${fmt2(chosen.weight)} / ${fmt2(capacity)}（超 ${fmt2(chosen.over)}）`,
+    ``,
+    `拿取明细：`,
+    `- ${names.i1}：${chosen.counts.c1} 下`,
+    `- ${names.i2}：${chosen.counts.c2} 下`,
+    `- ${names.i3}：${chosen.counts.c3} 下`,
+    `- ${names.i4}：${chosen.counts.c4} 下${caps.soloLock4 ? "（单人禁用）" : ""}`,
+    `- ${names.i5}：${chosen.counts.u5} 件`,
+    ``
+  ];
+
+  if(chosen.ok){
+    summaryLines.push(`最后一下：${names[chosen.lastKind]}`);
+    summaryLines.push(`建议顺序：先拿其它物品，把 ${names[chosen.lastKind]} 留到最后一下`);
+    summaryLines.push(`UI 缝隙带来的总到手增量：${gainFinal > 0 ? "+" : ""}${fmt(gainFinal)}`);
+  }else{
+    summaryLines.push(`建议顺序：按上面方案直接拿满，不需要留“最后一下”`);
+    summaryLines.push(`UI 缝隙无额外收益，没必要硬冲`);
+  }
+
+  summaryLines.push(``);
+  if(caps.soloLock4) summaryLines.push(`提示：单人模式下，${names.i4} 已自动视为不可拿。`);
+  summaryLines.push(`参数：${players} 人 / ${diff === "hard" ? "困难" : "普通"} / 分红 ×${cut} / 精英 ${eliteBonus ? "开启" : "关闭"} / 主目标 ${fmt(primary)}`);
+  $("summary").textContent = summaryLines.join("\n");
+
+  window.__lastSummary = summaryLines.join("\n");
+}
+
+function fillExample(){
+  $("players").value = "3";
+  $("cut").value = "1";
+  $("ignoreCut").checked = true;
+  $("difficulty").value = "normal";
+  $("elite").checked = true;
+  $("primaryType").value = "tequila";
+  $("name1").value = "厕纸";
+  $("name2").value = "绿茶";
+  $("name3").value = "可可粉";
+  $("name4").value = "金条";
+  $("name5").value = "名画";
+  $("pile1").value = "1";
+  $("pile2").value = "2";
+  $("pile3").value = "3";
+  $("pile4").value = "4";
+  $("unit5").value = "1";
+  compute();
+}
+
+function copySummary(){
+  const text = window.__lastSummary || $("summary").textContent || "";
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn = $("copySummary");
+    const old = btn.textContent;
+    btn.textContent = "已复制";
+    setTimeout(()=>btn.textContent = old, 1200);
+  }).catch(()=>{
+    alert("复制失败，可能是当前环境不允许剪贴板。");
+  });
+}
+
+document.querySelectorAll("input, select").forEach(el=>{
+  el.addEventListener("input", syncPrimaryUI);
+  el.addEventListener("change", syncPrimaryUI);
+});
+$("run").addEventListener("click", compute);
+$("example").addEventListener("click", fillExample);
+$("copySummary").addEventListener("click", copySummary);
+
+syncPrimaryUI();
+compute();
+</script>
+</body>
+</html>
