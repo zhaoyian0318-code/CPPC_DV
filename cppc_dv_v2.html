@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>佩里科装包收益模拟器 v2</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --panel:#111824; --panel2:#0d1520; --line:#213045; --line2:#1d2a3b;
+      --text:#e8eef6; --muted:#a8bdd8; --ok:#7dffb2; --bad:#ff7d7d; --warn:#ffd27d; --accent:#4aa3ff;
+      --cash:#7cc8ff; --weed:#7dffb2; --coke:#f6b26b; --gold:#ffd966; --paint:#d5a6ff;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "PingFang SC", "Microsoft YaHei", Arial;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text)}
+    .wrap{max-width:1280px;margin:0 auto;padding:18px}
+    h1{font-size:24px;margin:0 0 8px}
+    h2{font-size:15px;margin:18px 0 10px;color:#cfe3ff}
+    .sub{color:var(--muted);font-size:13px;line-height:1.5}
+    .card{background:var(--panel);border:1px solid var(--line2);border-radius:16px;padding:14px;box-shadow:0 10px 22px rgba(0,0,0,.25)}
+    .grid{display:grid;gap:10px}
+    .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .g5{grid-template-columns:repeat(5,minmax(0,1fr))}
+    .row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+    .stack{flex-direction:column;align-items:stretch}
+    label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+    input,select,button,textarea{
+      width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);
+      background:var(--panel2);color:var(--text);outline:none
+    }
+    input[type="checkbox"], input[type="radio"]{width:auto;padding:0}
+    input[type="range"]{padding:0}
+    button{cursor:pointer;width:auto}
+    button.primary{background:linear-gradient(90deg,var(--accent),#7dffb2);color:#07111d;border:none;font-weight:700}
+    button.secondary{background:var(--panel2);color:var(--text)}
+    .pill{display:inline-block;padding:5px 9px;border-radius:999px;border:1px solid #2a3c57;background:var(--panel2);font-size:12px;color:#cfe3ff}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace}
+    .muted{color:var(--muted);font-size:12px}
+    .small{font-size:11px;color:var(--muted)}
+    .sep{height:1px;background:var(--line2);margin:12px 0}
+    .note{padding:10px;border-radius:12px;background:var(--panel2);border:1px dashed #2a3c57;line-height:1.55}
+    .kpi{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .kpi .card{padding:12px}
+    .big{font-size:22px;font-weight:800}
+    .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+    .badge{padding:3px 7px;border-radius:999px;font-size:11px;border:1px solid var(--line)}
+    .good{color:var(--ok);border-color:rgba(125,255,178,.35);background:rgba(125,255,178,.08)}
+    .warning{color:var(--warn);border-color:rgba(255,210,125,.35);background:rgba(255,210,125,.08)}
+    .danger{color:var(--bad);border-color:rgba(255,125,125,.35);background:rgba(255,125,125,.08)}
+    .progress{height:16px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;overflow:hidden;display:flex}
+    .seg{height:100%}
+    .legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+    .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+    .sw{width:10px;height:10px;border-radius:999px;display:inline-block;flex:0 0 10px}
+    .player-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .result-block{white-space:pre-wrap;line-height:1.55}
+    .code{font-family: ui-monospace, monospace;background:rgba(255,255,255,.03);padding:2px 6px;border-radius:6px}
+    details{border:1px solid var(--line2);border-radius:12px;padding:10px;background:rgba(255,255,255,.01)}
+    details summary{cursor:pointer;color:#cfe3ff}
+    .item-card{padding:12px;border:1px solid var(--line2);background:rgba(255,255,255,.01);border-radius:14px}
+    .inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    @media (max-width: 980px){
+      .g5,.g4,.g3,.g2,.kpi,.player-grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🧠 佩里科装包收益模拟器 v2</h1>
+  <div class="sub">现在它不只是“算一个最大值”，而是尽量回答：<b>这局到底怎么拿、每个人拿什么、真实模式和理论模式差多少</b>。<br>注：多人模式下当前采用 <b>逐人最优分配</b> 方案，已经很能打，但不保证覆盖所有极端边角最优分配。</div>
+
+  <h2>基础设置</h2>
+  <div class="card grid g4">
+    <div>
+      <label>参与人数</label>
+      <select id="players">
+        <option value="1">1</option>
+        <option value="2" selected>2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+      <div class="muted">每人背包容量 = 1800</div>
+    </div>
+
+    <div>
+      <label>分红比例</label>
+      <input id="cutRange" type="range" min="0" max="100" step="5" value="85" />
+      <div class="row" style="justify-content:flex-start;gap:10px;margin-top:6px">
+        <span id="cutLabel" class="pill mono">85%</span>
+        <label class="inline" style="margin:0">
+          <input id="ignoreCut" type="checkbox" />
+          <span class="muted">忽略分红（按 100% 算）</span>
+        </label>
+      </div>
+    </div>
+
+    <div>
+      <label>难度</label>
+      <select id="difficulty">
+        <option value="normal" selected>普通</option>
+        <option value="hard">困难</option>
+      </select>
+      <div class="muted">困难：主目标 × 110%</div>
+    </div>
+
+    <div>
+      <label>精英</label>
+      <label class="inline" style="margin-top:10px">
+        <input id="elite" type="checkbox" />
+        <span class="muted">普通 +50,000；困难 +100,000</span>
+      </label>
+    </div>
+  </div>
+
+  <h2>主目标</h2>
+  <div class="card grid g4">
+    <div>
+      <label>主目标类型</label>
+      <select id="primaryType">
+        <option value="tequila">龙舌兰（次要 +20%）</option>
+        <option value="ruby">项链（次要 +10%）</option>
+        <option value="bonds">债券（次要 +5%）</option>
+        <option value="pink" selected>粉钻（次要 +0%）</option>
+        <option value="panther">金豹（次要 +0%）</option>
+      </select>
+    </div>
+    <div>
+      <label>主目标金额（自动）</label>
+      <input id="primaryAmount" disabled />
+    </div>
+    <div>
+      <label>次要加成（自动）</label>
+      <div id="boostLabel" class="pill mono">+0%</div>
+    </div>
+    <div class="note">
+      <b>最终公式</b><br>
+      <span class="code mono">(主 + 次 + 20000) × 0.88 × 分红 + 精英</span>
+    </div>
+  </div>
+
+  <h2>模式</h2>
+  <div class="card">
+    <div class="inline">
+      <label class="inline" style="margin:0"><input type="radio" name="mode" value="strict" checked> <span><b>计算模式</b>：真实分区 + 不允许超重</span></label>
+      <label class="inline" style="margin:0"><input type="radio" name="mode" value="real"> <span><b>现实模式</b>：真实分区 + 允许每人最后一下 UI 缝隙</span></label>
+      <label class="inline" style="margin:0"><input type="radio" name="mode" value="theory"> <span><b>理论模式</b>：纯收益最大化，不考虑所有限制</span></label>
+    </div>
+    <div class="muted" style="margin-top:10px">
+      真实分区 = <span class="code">豪宅外：可可 / 绿茶 / 厕纸</span> → <span class="code">豪宅内：金条 / 名画 / 厕纸</span><br>
+      现实模式里的 UI 缝隙 = 每个玩家最多额外多拿 <b>1 下</b>，且不能是名画。
+    </div>
+  </div>
+
+  <h2>岛上刷新</h2>
+  <div class="grid g2">
+    <div class="card">
+      <div class="row"><b>豪宅外</b><span class="pill">只能先拿这些</span></div>
+      <div class="grid g3" style="margin-top:10px">
+        <div class="item-card">
+          <label>可可粉（堆）</label>
+          <input id="outsideCoke" type="number" min="0" step="1" value="0" />
+          <div class="small" style="margin-top:8px">10下/堆 · 900重/堆 · 198,000/堆</div>
+        </div>
+        <div class="item-card">
+          <label>绿茶（堆）</label>
+          <input id="outsideWeed" type="number" min="0" step="1" value="0" />
+          <div class="small" style="margin-top:8px">10下/堆 · 675重/堆 · 130,500/堆</div>
+        </div>
+        <div class="item-card">
+          <label>厕纸（堆）</label>
+          <input id="outsideCash" type="number" min="0" step="1" value="0" />
+          <div class="small" style="margin-top:8px">10下/堆 · 450重/堆 · 78,750/堆</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row"><b>豪宅内</b><span class="pill">只能后拿这些</span></div>
+      <div class="grid g3" style="margin-top:10px">
+        <div class="item-card">
+          <label>金条（堆）</label>
+          <input id="insideGold" type="number" min="0" step="1" value="0" />
+          <div class="small" style="margin-top:8px">7下/堆 · 1200重/堆 · 328,333/堆</div>
+        </div>
+        <div class="item-card">
+          <label>名画（件）</label>
+          <input id="insidePaint" type="number" min="0" step="1" value="0" />
+          <div class="small" style="margin-top:8px">整件 · 900重/件 · 157,500/件</div>
+        </div>
+        <div class="item-card">
+          <label>厕纸（堆）</label>
+          <input id="insideCash" type="number" min="0" step="1" value="0" />
+          <div class="small" style="margin-top:8px">10下/堆 · 450重/堆 · 78,750/堆</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sep"></div>
+  <div class="row stack">
+    <div class="inline">
+      <button id="run" class="primary">计算</button>
+      <button id="preset1" class="secondary">测试：单人 1 金条</button>
+      <button id="preset2" class="secondary">测试：单人 1画1可可1绿茶</button>
+      <button id="preset3" class="secondary">测试：双人 3 金条</button>
+      <button id="copySummary" class="secondary">复制摘要</button>
+    </div>
+  </div>
+
+  <h2>结果总览</h2>
+  <div class="kpi">
+    <div class="card"><div class="small">当前模式总到手</div><div id="kpiFinal" class="big mono">0</div><div id="kpiMode" class="small">未计算</div></div>
+    <div class="card"><div class="small">当前模式次要（含加成）</div><div id="kpiSecondary" class="big mono">0</div><div id="kpiWeight" class="small">0 / 0</div></div>
+    <div class="card"><div class="small">理论模式总到手</div><div id="kpiTheory" class="big mono">0</div><div id="kpiTheorySec" class="small">理论次要 0</div></div>
+    <div class="card"><div class="small">理论 / 当前差值</div><div id="kpiDiff" class="big mono">0</div><div id="kpiWhy" class="small">未计算</div></div>
+  </div>
+
+  <div class="grid g2" style="margin-top:10px">
+    <div class="card">
+      <div class="row"><b>当前模式摘要</b><span id="statusBadge" class="badge warning">未计算</span></div>
+      <div id="summary" class="result-block mono" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <div class="row"><b>规则说明 / 提示</b><span class="badge good">A → H</span></div>
+      <div id="explain" class="result-block" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <h2>每人独立进度条</h2>
+  <div id="playersOut" class="player-grid"></div>
+
+  <h2>详细结果</h2>
+  <details>
+    <summary>展开查看当前模式与理论模式的详细组成</summary>
+    <div class="grid g2" style="margin-top:10px">
+      <div class="card"><b>当前模式</b><div id="detailCurrent" class="result-block mono" style="margin-top:10px"></div></div>
+      <div class="card"><b>理论模式</b><div id="detailTheory" class="result-block mono" style="margin-top:10px"></div></div>
+    </div>
+  </details>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const fmt = n => Math.round(n).toLocaleString('zh-CN');
+  const fmt2 = n => (Math.round(n * 100) / 100).toLocaleString('zh-CN');
+  const clamp = (n,a,b)=>Math.max(a,Math.min(b,n));
+
+  const SCALE_W = 14; // make gold click integer
+  const SCALE_V = 7;
+  const BAG = 1800;
+  const BAG_S = BAG * SCALE_W;
+
+  const PRIMARY = {
+    tequila: { base: 630000, boost: 0.20, label:'龙舌兰' },
+    ruby:    { base: 700000, boost: 0.10, label:'项链' },
+    bonds:   { base: 770000, boost: 0.05, label:'债券' },
+    pink:    { base: 1300000, boost: 0.00, label:'粉钻' },
+    panther: { base: 1900000, boost: 0.00, label:'金豹' }
+  };
+
+  const ITEMS = {
+    cashOut: { label:'厕纸（外）', short:'厕纸', group:'outside', clicksPerPile:10, wPile:450,  vPile: 78750,  color:'var(--cash)' },
+    weed:    { label:'绿茶',       short:'绿茶', group:'outside', clicksPerPile:10, wPile:675,  vPile:130500, color:'var(--weed)' },
+    coke:    { label:'可可粉',     short:'可可', group:'outside', clicksPerPile:10, wPile:900,  vPile:198000, color:'var(--coke)' },
+    cashIn:  { label:'厕纸（内）', short:'厕纸', group:'inside',  clicksPerPile:10, wPile:450,  vPile: 78750,  color:'var(--cash)' },
+    gold:    { label:'金条',       short:'金条', group:'inside',  clicksPerPile:7,  wPile:1200, vPile:328333, color:'var(--gold)' },
+    paint:   { label:'名画',       short:'名画', group:'inside',  units:true,        wUnit:900,  vUnit:157500, color:'var(--paint)' }
+  };
+
+  const FIELD_ORDER = ['cashOut','weed','coke','cashIn','gold','paint'];
+  const PACK_BITS = 16n;
+  const MASK = (1n << PACK_BITS) - 1n;
+  const SHIFT = FIELD_ORDER.reduce((acc,_,i)=>{acc.push(BigInt(i)*PACK_BITS); return acc;}, []);
+
+  function packCounts(c){
+    let p = 0n;
+    FIELD_ORDER.forEach((k, i) => { p |= (BigInt(c[k] || 0) & MASK) << SHIFT[i]; });
+    return p;
+  }
+  function unpackCounts(p){
+    const c = {};
+    FIELD_ORDER.forEach((k, i) => { c[k] = Number((p >> SHIFT[i]) & MASK); });
+    return c;
+  }
+  function addToPack(p, key, add){
+    const i = FIELD_ORDER.indexOf(key);
+    const cur = (p >> SHIFT[i]) & MASK;
+    const next = cur + BigInt(add);
+    const cleared = p & ~(MASK << SHIFT[i]);
+    return cleared | ((next & MASK) << SHIFT[i]);
+  }
+
+  function scaledClickWeight(key){
+    const it = ITEMS[key];
+    return Math.round((it.wPile / it.clicksPerPile) * SCALE_W);
+  }
+  function scaledClickValue(key){
+    const it = ITEMS[key];
+    return Math.round((it.vPile / it.clicksPerPile) * SCALE_V);
+  }
+  function humanClickWeight(key){ return scaledClickWeight(key) / SCALE_W; }
+  function humanClickValue(key){ return scaledClickValue(key) / SCALE_V; }
+  function humanPackWeight(c){
+    let w = 0;
+    w += c.cashOut * humanClickWeight('cashOut');
+    w += c.weed    * humanClickWeight('weed');
+    w += c.coke    * humanClickWeight('coke');
+    w += c.cashIn  * humanClickWeight('cashIn');
+    w += c.gold    * humanClickWeight('gold');
+    w += c.paint   * ITEMS.paint.wUnit;
+    return w;
+  }
+  function packValueRaw(c){
+    let v = 0;
+    v += c.cashOut * humanClickValue('cashOut');
+    v += c.weed    * humanClickValue('weed');
+    v += c.coke    * humanClickValue('coke');
+    v += c.cashIn  * humanClickValue('cashIn');
+    v += c.gold    * humanClickValue('gold');
+    v += c.paint   * ITEMS.paint.vUnit;
+    return v;
+  }
+
+  function getInputState(){
+    const players = parseInt($('players').value, 10);
+    const cutPct = parseInt($('cutRange').value, 10);
+    const ignoreCut = $('ignoreCut').checked;
+    const cut = ignoreCut ? 1 : (cutPct / 100);
+    const difficulty = $('difficulty').value;
+    const elite = $('elite').checked;
+    const primaryType = $('primaryType').value;
+    const pInfo = PRIMARY[primaryType];
+    const primary = difficulty === 'hard' ? pInfo.base * 1.10 : pInfo.base;
+    const eliteBonus = elite ? (difficulty === 'hard' ? 100000 : 50000) : 0;
+    const mode = document.querySelector('input[name="mode"]:checked').value;
+
+    const inv = {
+      cashOut: Math.max(0, Math.floor(parseFloat($('outsideCash').value || 0))) * ITEMS.cashOut.clicksPerPile,
+      weed:    Math.max(0, Math.floor(parseFloat($('outsideWeed').value || 0))) * ITEMS.weed.clicksPerPile,
+      coke:    Math.max(0, Math.floor(parseFloat($('outsideCoke').value || 0))) * ITEMS.coke.clicksPerPile,
+      cashIn:  Math.max(0, Math.floor(parseFloat($('insideCash').value || 0))) * ITEMS.cashIn.clicksPerPile,
+      gold:    players === 1 ? 0 : Math.max(0, Math.floor(parseFloat($('insideGold').value || 0))) * ITEMS.gold.clicksPerPile,
+      paint:   Math.max(0, Math.floor(parseFloat($('insidePaint').value || 0)))
+    };
+
+    return { players, cutPct, ignoreCut, cut, difficulty, elite, primaryType, primary, boost: pInfo.boost, eliteBonus, mode, inv, goldLocked: players === 1 && Math.floor(parseFloat($('insideGold').value || 0)) > 0 };
+  }
+
+  function syncUI(){
+    const s = getInputState();
+    $('cutLabel').textContent = $('ignoreCut').checked ? '100%' : `${s.cutPct}%`;
+    $('primaryAmount').value = Math.round(s.primary);
+    $('boostLabel').textContent = `+${Math.round(s.boost * 100)}%`;
+  }
+
+  function copyInv(inv){
+    return { cashOut:inv.cashOut, weed:inv.weed, coke:inv.coke, cashIn:inv.cashIn, gold:inv.gold, paint:inv.paint };
+  }
+
+  function invEmpty(inv){
+    return FIELD_ORDER.every(k => (inv[k] || 0) <= 0);
+  }
+
+  function buildChunks(inv, keys, capacityScaled){
+    const chunks = [];
+    keys.forEach(key => {
+      const it = ITEMS[key];
+      if (it.units) {
+        let remain = Math.max(0, inv[key] || 0);
+        let k = 1;
+        while (remain > 0) {
+          const take = Math.min(k, remain);
+          chunks.push({ key, qty:take, w:it.wUnit * SCALE_W * take, v:it.vUnit * SCALE_V * take });
+          remain -= take;
+          k *= 2;
+        }
+      } else {
+        let remain = Math.max(0, inv[key] || 0);
+        let k = 1;
+        while (remain > 0) {
+          const take = Math.min(k, remain);
+          chunks.push({ key, qty:take, w:scaledClickWeight(key) * take, v:scaledClickValue(key) * take });
+          remain -= take;
+          k *= 2;
+        }
+      }
+    });
+    return chunks;
+  }
+
+  function dpBest(capacityScaled, inv, keys){
+    const NEG = -1e18;
+    const dp = new Array(capacityScaled + 1).fill(NEG);
+    const pack = new Array(capacityScaled + 1).fill(0n);
+    dp[0] = 0; pack[0] = packCounts({ cashOut:0, weed:0, coke:0, cashIn:0, gold:0, paint:0 });
+    const chunks = buildChunks(inv, keys, capacityScaled);
+    for (const ch of chunks) {
+      for (let w = capacityScaled; w >= ch.w; w--) {
+        const prev = w - ch.w;
+        if (dp[prev] === NEG) continue;
+        const cand = dp[prev] + ch.v;
+        if (cand > dp[w] || (cand === dp[w] && prev >= 0)) {
+          dp[w] = cand;
+          pack[w] = addToPack(pack[prev], ch.key, ch.qty);
+        }
+      }
+    }
+    let bestW = 0, bestVal = dp[0], bestPack = pack[0];
+    for (let w = 1; w <= capacityScaled; w++) {
+      if (dp[w] > bestVal || (dp[w] === bestVal && w > bestW)) {
+        bestVal = dp[w]; bestW = w; bestPack = pack[w];
+      }
+    }
+    return { dp, pack, bestW, bestVal, bestPack };
+  }
+
+  function optimizeOnePlayerStrict(inv){
+    const res = dpBest(BAG_S, inv, FIELD_ORDER);
+    return {
+      counts: unpackCounts(res.bestPack),
+      weight: res.bestW / SCALE_W,
+      rawSecondary: res.bestVal / SCALE_V,
+      usedCrack: false,
+      crackItem: null,
+      crackOver: 0,
+      crackRemnant: 0
+    };
+  }
+
+  function optimizeOnePlayerReal(inv){
+    const base = dpBest(BAG_S, inv, FIELD_ORDER);
+    let best = {
+      counts: unpackCounts(base.bestPack),
+      weight: base.bestW / SCALE_W,
+      rawSecondary: base.bestVal / SCALE_V,
+      usedCrack: false,
+      crackItem: null,
+      crackOver: 0,
+      crackRemnant: 0
+    };
+
+    const extraCandidates = ['cashOut','weed','coke','cashIn','gold'];
+    for (let wBase = 0; wBase <= BAG_S; wBase++) {
+      if (base.dp[wBase] < -1e17) continue;
+      const c = unpackCounts(base.pack[wBase]);
+      const hasInside = c.cashIn > 0 || c.gold > 0 || c.paint > 0;
+      for (const key of extraCandidates) {
+        if ((inv[key] || 0) <= (c[key] || 0)) continue;
+        const clickW = scaledClickWeight(key);
+        if (ITEMS[key].group === 'outside' && hasInside) continue;
+        const wFinal = wBase + clickW;
+        const over = wFinal - BAG_S;
+        if (!(over > 0 && over < clickW)) continue;
+        const vFinal = base.dp[wBase] + scaledClickValue(key);
+        if (vFinal > best.rawSecondary * SCALE_V || (Math.abs(vFinal - best.rawSecondary * SCALE_V) < 1e-9 && wFinal > best.weight * SCALE_W)) {
+          const np = addToPack(base.pack[wBase], key, 1);
+          best = {
+            counts: unpackCounts(np),
+            weight: wFinal / SCALE_W,
+            rawSecondary: vFinal / SCALE_V,
+            usedCrack: true,
+            crackItem: key,
+            crackOver: over / SCALE_W,
+            crackRemnant: (clickW - over) / SCALE_W
+          };
+        }
+      }
+    }
+    return best;
+  }
+
+  function optimizeTotalTheory(inv, players){
+    const cap = BAG_S * players;
+    const res = dpBest(cap, inv, FIELD_ORDER);
+    return {
+      counts: unpackCounts(res.bestPack),
+      weight: res.bestW / SCALE_W,
+      rawSecondary: res.bestVal / SCALE_V,
+      usedCrack: false,
+      crackItem: null,
+      crackOver: 0,
+      crackRemnant: 0
+    };
+  }
+
+  function subtractInv(inv, counts){
+    const next = copyInv(inv);
+    FIELD_ORDER.forEach(k => { next[k] = Math.max(0, (next[k] || 0) - (counts[k] || 0)); });
+    return next;
+  }
+
+  function sequentialAllocate(inv, players, mode){
+    let rem = copyInv(inv);
+    const plans = [];
+    for (let i = 0; i < players; i++) {
+      if (invEmpty(rem)) {
+        plans.push({ counts:{cashOut:0,weed:0,coke:0,cashIn:0,gold:0,paint:0}, weight:0, rawSecondary:0, usedCrack:false, crackItem:null, crackOver:0, crackRemnant:0 });
+        continue;
+      }
+      const plan = mode === 'real' ? optimizeOnePlayerReal(rem) : optimizeOnePlayerStrict(rem);
+      plans.push(plan);
+      rem = subtractInv(rem, plan.counts);
+    }
+    return { plans, remaining: rem };
+  }
+
+  function allocateTheoryForDisplay(totalCounts, players){
+    let rem = copyInv(totalCounts);
+    const plans = [];
+    for (let i = 0; i < players; i++) {
+      if (invEmpty(rem)) {
+        plans.push({ counts:{cashOut:0,weed:0,coke:0,cashIn:0,gold:0,paint:0}, weight:0, rawSecondary:0, usedCrack:false, crackItem:null, crackOver:0, crackRemnant:0 });
+        continue;
+      }
+      const plan = optimizeOnePlayerStrict(rem); // display split only
+      plans.push(plan);
+      rem = subtractInv(rem, plan.counts);
+    }
+    return plans;
+  }
+
+  function countsToSegments(counts, crackItem){
+    const segs = [];
+    function pushSeg(key, qty){ if (qty > 0) segs.push({ key, qty }); }
+    const outOrder = ['cashOut','weed','coke'];
+    const inOrder = ['gold','paint','cashIn'];
+    const c = { ...counts };
+    if (crackItem && crackItem in c && c[crackItem] > 0) c[crackItem] -= 1;
+    outOrder.forEach(k => pushSeg(k, c[k] || 0));
+    inOrder.forEach(k => pushSeg(k, c[k] || 0));
+    if (crackItem) pushSeg(crackItem, 1);
+    return segs.filter(s => s.qty > 0);
+  }
+
+  function compressSegments(segs){
+    const out = [];
+    for (const s of segs) {
+      const last = out[out.length - 1];
+      if (last && last.key === s.key) last.qty += s.qty;
+      else out.push({ ...s });
+    }
+    return out;
+  }
+
+  function segLabel(key, qty){
+    if (key === 'paint') return `${ITEMS[key].short} ${qty}件`;
+    const perPile = ITEMS[key].clicksPerPile;
+    const piles = qty / perPile;
+    if (Number.isInteger(piles)) return `${ITEMS[key].short} ${piles}堆`;
+    return `${ITEMS[key].short} ${qty}下`;
+  }
+
+  function renderPlayerCard(plan, index){
+    const counts = plan.counts;
+    const totalWeight = humanPackWeight(counts);
+    const total = Math.max(totalWeight, 1);
+    const segs = compressSegments(countsToSegments(counts, plan.usedCrack ? plan.crackItem : null));
+    const barHtml = segs.map(seg => {
+      const w = (seg.key === 'paint') ? seg.qty * ITEMS.paint.wUnit : seg.qty * humanClickWeight(seg.key);
+      const pct = (w / total) * 100;
+      return `<div class="seg" title="${segLabel(seg.key, seg.qty)}" style="width:${pct}%;background:${ITEMS[seg.key].color}"></div>`;
+    }).join('') || `<div class="seg" style="width:100%;background:#1a2434"></div>`;
+    const legendHtml = segs.map(seg => `<span class="legend-item"><span class="sw" style="background:${ITEMS[seg.key].color}"></span>${segLabel(seg.key, seg.qty)}</span>`).join('') || '<span class="muted">空包</span>';
+    const sequence = segs.map(seg => ITEMS[seg.key].short).join(' → ') || '空';
+    const raw = packValueRaw(counts);
+    const crackText = plan.usedCrack ? `\nUI缝隙：最后一下 ${ITEMS[plan.crackItem].short}（超 ${fmt2(plan.crackOver)}，最后一下前剩余 ${fmt2(plan.crackRemnant)}）` : '';
+    return `
+      <div class="card">
+        <div class="row"><b>玩家 ${index + 1}</b><span class="pill mono">${fmt2(totalWeight)} / 1800</span></div>
+        <div class="progress" style="margin-top:8px">${barHtml}</div>
+        <div class="legend">${legendHtml}</div>
+        <div class="sep"></div>
+        <div class="small">拿取顺序</div>
+        <div class="mono" style="margin-top:6px">${sequence}</div>
+        <div class="sep"></div>
+        <div class="result-block mono">次要（原始）：${fmt(raw)}\n重量：${fmt2(totalWeight)} / 1800${crackText}</div>
+      </div>`;
+  }
+
+  function describeCounts(counts){
+    const lines = [];
+    if (counts.cashOut) lines.push(`豪宅外厕纸：${counts.cashOut}下`);
+    if (counts.weed)    lines.push(`绿茶：${counts.weed}下`);
+    if (counts.coke)    lines.push(`可可粉：${counts.coke}下`);
+    if (counts.cashIn)  lines.push(`豪宅内厕纸：${counts.cashIn}下`);
+    if (counts.gold)    lines.push(`金条：${counts.gold}下`);
+    if (counts.paint)   lines.push(`名画：${counts.paint}件`);
+    return lines.length ? lines.join('\n') : '空';
+  }
+
+  function totalsFromPlans(plans){
+    const totalCounts = { cashOut:0, weed:0, coke:0, cashIn:0, gold:0, paint:0 };
+    let weight = 0, rawSecondary = 0, usedCrack = 0;
+    plans.forEach(p => {
+      FIELD_ORDER.forEach(k => totalCounts[k] += p.counts[k] || 0);
+      weight += humanPackWeight(p.counts);
+      rawSecondary += packValueRaw(p.counts);
+      if (p.usedCrack) usedCrack++;
+    });
+    return { totalCounts, weight, rawSecondary, usedCrack };
+  }
+
+  function buildFinal(rawSecondary, primary, boost, cut, eliteBonus){
+    const boosted = rawSecondary * (1 + boost);
+    return {
+      secondaryRaw: rawSecondary,
+      secondaryBoosted: boosted,
+      final: (primary + boosted + 20000) * 0.88 * cut + eliteBonus
+    };
+  }
+
+  function currentModeResult(state){
+    if (state.mode === 'theory') {
+      const theory = optimizeTotalTheory(state.inv, state.players);
+      const displayPlans = allocateTheoryForDisplay(theory.counts, state.players);
+      return {
+        type:'theory',
+        plans: displayPlans,
+        totalCounts: theory.counts,
+        totalWeight: theory.weight,
+        rawSecondary: theory.rawSecondary,
+        cracksUsed: 0,
+        notes: ['理论模式：纯收益最大化，不考虑真实分区与每人独立可执行性。', '下方每人进度条只是参考拆分展示。']
+      };
+    }
+
+    const alloc = sequentialAllocate(state.inv, state.players, state.mode);
+    const total = totalsFromPlans(alloc.plans);
+    const notes = [];
+    notes.push(state.mode === 'real'
+      ? '现实模式：按玩家逐个装包，允许每个玩家最后一下 UI 缝隙。'
+      : '计算模式：按玩家逐个装包，严格不允许超重。');
+    notes.push('当前多人分配逻辑为“逐人最优分配”，已经很好用，但不是所有极端情况的全局最优证明器。');
+    return {
+      type: state.mode,
+      plans: alloc.plans,
+      totalCounts: total.totalCounts,
+      totalWeight: total.weight,
+      rawSecondary: total.rawSecondary,
+      cracksUsed: total.usedCrack,
+      remaining: alloc.remaining,
+      notes
+    };
+  }
+
+  function theoryResult(state){
+    const theory = optimizeTotalTheory(state.inv, state.players);
+    return theory;
+  }
+
+  function explainWhy(state, current, theory){
+    const lines = [];
+    if (state.goldLocked) lines.push(`- 单人模式下金条自动禁用。`);
+    if (state.mode !== 'theory') {
+      lines.push(`- 理论模式忽略真实装包限制；当前模式会被“每人 1800 容量”和真实模式规则拦一下。`);
+      if (state.mode === 'strict') lines.push(`- 计算模式不允许 UI 缝隙。`);
+      if (state.mode === 'real') lines.push(`- 现实模式允许每人最后一下 UI 缝隙，但仍然不等于理论值。`);
+    } else {
+      lines.push(`- 理论模式是宇宙数学最大值。`);
+    }
+    if (current.cracksUsed > 0) lines.push(`- 当前方案共触发 ${current.cracksUsed} 次 UI 缝隙。`);
+    return lines.join('\n');
+  }
+
+  function render(){
+    syncUI();
+    const state = getInputState();
+    const current = currentModeResult(state);
+    const theory = theoryResult(state);
+
+    const currentFinal = buildFinal(current.rawSecondary, state.primary, state.boost, state.cut, state.eliteBonus);
+    const theoryFinal = buildFinal(theory.rawSecondary, state.primary, state.boost, state.cut, state.eliteBonus);
+    const diff = theoryFinal.final - currentFinal.final;
+
+    $('kpiFinal').textContent = fmt(currentFinal.final);
+    $('kpiMode').textContent = state.mode === 'strict' ? '当前：计算模式' : state.mode === 'real' ? '当前：现实模式' : '当前：理论模式';
+    $('kpiSecondary').textContent = fmt(currentFinal.secondaryBoosted);
+    $('kpiWeight').textContent = `${fmt2(current.totalWeight)} / ${fmt2(state.players * BAG)}`;
+    $('kpiTheory').textContent = fmt(theoryFinal.final);
+    $('kpiTheorySec').textContent = `理论次要 ${fmt(theoryFinal.secondaryBoosted)}`;
+    $('kpiDiff').textContent = `${diff > 0 ? '+' : ''}${fmt(diff)}`;
+    $('kpiWhy').textContent = state.mode === 'theory' ? '你自己就是理论值' : '理论值 - 当前模式';
+
+    const badge = $('statusBadge');
+    badge.className = 'badge ' + (state.mode === 'real' ? 'good' : state.mode === 'strict' ? 'warning' : 'danger');
+    badge.textContent = state.mode === 'real' ? '现实模式' : state.mode === 'strict' ? '计算模式' : '理论模式';
+
+    const summaryLines = [
+      `当前模式：${badge.textContent}`,
+      `总到手：${fmt(currentFinal.final)}`,
+      `次要（原始）：${fmt(current.rawSecondary)}`,
+      `次要（含加成）：${fmt(currentFinal.secondaryBoosted)}`,
+      `总重量：${fmt2(current.totalWeight)} / ${fmt2(state.players * BAG)}`,
+      `理论模式总到手：${fmt(theoryFinal.final)}`,
+      `理论 / 当前差值：${diff > 0 ? '+' : ''}${fmt(diff)}`,
+      ``,
+      `当前模式总组成：`,
+      describeCounts(current.totalCounts),
+      ``,
+      `参数：${state.players}人 / ${state.difficulty === 'hard' ? '困难' : '普通'} / 分红 ${state.ignoreCut ? '忽略' : state.cutPct + '%'} / 精英 ${state.elite ? '开' : '关'} / 主目标 ${PRIMARY[state.primaryType].label}`
+    ];
+    $('summary').textContent = summaryLines.join('\n');
+
+    const explainLines = [];
+    current.notes.forEach(n => explainLines.push(`• ${n}`));
+    const more = explainWhy(state, current, theory);
+    if (more) explainLines.push(more);
+    explainLines.push(`• A. 显示理论 / 当前差值`);
+    explainLines.push(`• B. 输出拿取路径与每人独立进度条`);
+    explainLines.push(`• C. 可见不可达的理论损失`);
+    explainLines.push(`• D. 规则写明：豪宅外 → 豪宅内`);
+    explainLines.push(`• E. 当前已经带 3 组测试预设按钮`);
+    explainLines.push(`• F. 名画始终整件，且不参与 UI 缝隙`);
+    $('explain').textContent = explainLines.join('\n');
+
+    $('playersOut').innerHTML = current.plans.map((p, i) => renderPlayerCard(p, i)).join('');
+
+    $('detailCurrent').textContent = [
+      `总组成：`,
+      describeCounts(current.totalCounts),
+      ``,
+      ...current.plans.map((p, i) => `玩家 ${i + 1}\n${describeCounts(p.counts)}\n---`)
+    ].join('\n');
+
+    $('detailTheory').textContent = [
+      `理论总组成：`,
+      describeCounts(theory.counts),
+      ``,
+      `理论总重量：${fmt2(theory.weight)} / ${fmt2(state.players * BAG)}`,
+      `理论次要（原始）：${fmt(theory.rawSecondary)}`,
+      `理论次要（含加成）：${fmt(theoryFinal.secondaryBoosted)}`,
+      `理论总到手：${fmt(theoryFinal.final)}`
+    ].join('\n');
+
+    window.__lastSummary = $('summary').textContent;
+  }
+
+  function preset1(){
+    $('players').value = '1';
+    $('cutRange').value = '100';
+    $('ignoreCut').checked = true;
+    $('difficulty').value = 'normal';
+    $('elite').checked = false;
+    $('primaryType').value = 'pink';
+    $('outsideCoke').value = '0'; $('outsideWeed').value = '0'; $('outsideCash').value = '0';
+    $('insideGold').value = '1'; $('insidePaint').value = '0'; $('insideCash').value = '0';
+    document.querySelector('input[name="mode"][value="strict"]').checked = true;
+    render();
+  }
+  function preset2(){
+    $('players').value = '1';
+    $('cutRange').value = '100';
+    $('ignoreCut').checked = true;
+    $('difficulty').value = 'normal';
+    $('elite').checked = false;
+    $('primaryType').value = 'pink';
+    $('outsideCoke').value = '1'; $('outsideWeed').value = '1'; $('outsideCash').value = '0';
+    $('insideGold').value = '0'; $('insidePaint').value = '1'; $('insideCash').value = '0';
+    document.querySelector('input[name="mode"][value="real"]').checked = true;
+    render();
+  }
+  function preset3(){
+    $('players').value = '2';
+    $('cutRange').value = '100';
+    $('ignoreCut').checked = true;
+    $('difficulty').value = 'normal';
+    $('elite').checked = false;
+    $('primaryType').value = 'pink';
+    $('outsideCoke').value = '0'; $('outsideWeed').value = '0'; $('outsideCash').value = '0';
+    $('insideGold').value = '3'; $('insidePaint').value = '0'; $('insideCash').value = '0';
+    document.querySelector('input[name="mode"][value="strict"]').checked = true;
+    render();
+  }
+
+  function copySummary(){
+    const text = window.__lastSummary || $('summary').textContent || '';
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = $('copySummary');
+      const old = btn.textContent;
+      btn.textContent = '已复制';
+      setTimeout(() => btn.textContent = old, 1200);
+    }).catch(() => alert('复制失败，当前环境可能不允许剪贴板。'));
+  }
+
+  document.querySelectorAll('input,select').forEach(el => {
+    el.addEventListener('input', render);
+    el.addEventListener('change', render);
+  });
+  $('run').addEventListener('click', render);
+  $('preset1').addEventListener('click', preset1);
+  $('preset2').addEventListener('click', preset2);
+  $('preset3').addEventListener('click', preset3);
+  $('copySummary').addEventListener('click', copySummary);
+
+  syncUI();
+  render();
+})();
+</script>
+</body>
+</html>
