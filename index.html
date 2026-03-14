@@ -1,0 +1,1272 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>佩里科装包收益模拟器 v3.6.1</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --panel:#111824; --panel2:#0d1520; --border:#1d2a3b; --soft:#213045;
+      --text:#e8eef6; --muted:#9fb4ce; --ok:#7dffb2; --bad:#ff8d8d; --gold:#ffd16e;
+      --cocoa:#9b6b4b; --tea:#5bbf75; --paper:#d7d7d7; --goldbar:#f3c64e; --painting:#8ab4ff;
+      --shadow:0 10px 22px rgba(0,0,0,.28);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"PingFang SC","Microsoft YaHei",Arial}
+    .wrap{max-width:1200px;margin:0 auto;padding:18px}
+    h1{font-size:22px;margin:0 0 8px}
+    h2{font-size:15px;margin:18px 0 10px;color:#d8e7fb}
+    .sub{color:var(--muted);font-size:12px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:14px;box-shadow:var(--shadow)}
+    .grid{display:grid;gap:12px}
+    .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+    .stack{display:flex;flex-direction:column;gap:8px}
+    label{display:block;font-size:12px;color:#bdd0e8;margin-bottom:6px}
+    input,select,button,textarea{
+      width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--soft);
+      background:var(--panel2);color:var(--text);font:inherit
+    }
+    input[type=checkbox],input[type=radio]{width:auto;padding:0;margin:0}
+    button{cursor:pointer}
+    button:hover{filter:brightness(1.06)}
+    button.primary{background:#173251;border-color:#2e5688}
+    .muted{color:var(--muted);font-size:12px}
+    .pill{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid #2a3c57;background:var(--panel2);font-size:12px;color:#d5e7ff}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .sep{height:1px;background:var(--border);margin:12px 0}
+    .stat{padding:12px;border-radius:14px;background:var(--panel2);border:1px solid var(--soft)}
+    .stat .value{font-size:24px;font-weight:700}
+    .barBox{height:14px;border-radius:999px;overflow:hidden;background:var(--panel2);border:1px solid var(--soft)}
+    .bar{display:flex;height:100%}
+    .seg{height:100%}
+    .legend{display:flex;flex-wrap:wrap;gap:8px}
+    .legend span{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#cfe1f7}
+    .dot{display:inline-block;width:10px;height:10px;border-radius:999px}
+    .badge-ok{color:var(--ok)}
+    .badge-bad{color:var(--bad)}
+    .summary{white-space:pre-wrap;line-height:1.55}
+    details{border:1px solid var(--soft);border-radius:12px;background:var(--panel2);padding:10px 12px}
+    summary{cursor:pointer;color:#d8e7fb}
+    .smallbtns{display:flex;flex-wrap:wrap;gap:8px}
+    .smallbtns button{width:auto}
+    .playerCard{padding:10px;border:1px solid var(--soft);background:var(--panel2);border-radius:14px}
+    .right{justify-content:flex-end}
+    .warn{color:#ffd16e}
+    .modePills{display:flex;gap:8px;flex-wrap:wrap}
+    .modePills label{margin:0}
+    .modePills .mode{
+      display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--soft);border-radius:12px;background:var(--panel2);cursor:pointer
+    }
+    .kvs{display:grid;grid-template-columns:140px 1fr;gap:6px 10px;font-size:13px}
+    .kvs .k{color:#bdd0e8}
+    .footer{margin-top:16px;color:var(--muted);font-size:12px}
+    @media (max-width:900px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:760px){.g2,.g3,.g4{grid-template-columns:1fr}.row{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>佩里科装包收益模拟器 v3.6.1</h1>
+  <div class="sub">基于你当前公开页的壳重写：保留三模式、结果总览、进度条、摘要和按钮区，再把内核换成现实口径与分区顺序。已修正豪宅外/豪宅内厕纸在详细结果里混堆显示的问题。</div>
+
+  <div class="card grid g3">
+    <div>
+      <label>参与人数</label>
+      <select id="players">
+        <option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option>
+      </select>
+      <div class="muted">每人背包容量 = 1800</div>
+    </div>
+    <div>
+      <label>分红比例</label>
+      <input id="cut" type="number" min="0" max="1" step="0.01" value="0.85">
+      <div class="row" style="justify-content:flex-start;gap:8px;margin-top:8px">
+        <input id="ignoreCut" type="checkbox"><span class="muted">忽略分红（按 100% 算）</span>
+      </div>
+    </div>
+    <div>
+      <label>难度 / 精英</label>
+      <div class="row" style="gap:8px">
+        <select id="difficulty"><option value="normal">普通</option><option value="hard">困难</option></select>
+        <label class="mode" style="display:flex;align-items:center;gap:8px"><input id="elite" type="checkbox">精英</label>
+      </div>
+      <div class="muted" id="eliteHint" style="margin-top:8px">普通 +50,000；困难 +100,000</div>
+    </div>
+  </div>
+
+  <h2>主目标</h2>
+  <div class="card grid g3">
+    <div>
+      <label>主目标类型</label>
+      <select id="primaryType">
+        <option value="tequila">龙舌兰（次要 +20%）</option>
+        <option value="ruby">项链（次要 +10%）</option>
+        <option value="bonds">债券（次要 +5%）</option>
+        <option value="pink">粉钻（次要 +0%）</option>
+        <option value="panther">金豹（次要 +0%）</option>
+      </select>
+    </div>
+    <div>
+      <label>主目标金额（自动）</label>
+      <input id="primaryAmount" disabled>
+    </div>
+    <div>
+      <label>次要加成（自动）</label>
+      <input id="boostShow" disabled>
+    </div>
+    <div class="muted" style="grid-column:1/-1">最终公式：<span class="mono">(主 + 次 + 20000) × 0.88 × 分红 + 精英</span></div>
+  </div>
+
+  <h2>模式</h2>
+  <div class="card">
+    <div class="modePills">
+      <label class="mode"><input type="radio" name="mode" value="calc" checked>计算模式：真实分区 + 不允许超重</label>
+      <label class="mode"><input type="radio" name="mode" value="real">现实模式：真实分区 + 允许每人最后一下 UI 缝隙</label>
+      <label class="mode"><input type="radio" name="mode" value="theory">理论模式：纯收益最大化，不考虑所有限制</label>
+    </div>
+    <div class="muted" style="margin-top:10px">真实分区：<b>豪宅外</b>（可可粉 / 绿茶 / 厕纸） → <b>豪宅内</b>（金条 / 名画 / 厕纸）。顺序是硬约束，不是备注。</div>
+  </div>
+
+  <h2>岛上刷新</h2>
+  <div class="grid g2">
+    <div class="card">
+      <div class="row"><div><b>豪宅外</b></div><div class="muted">先拿这些</div></div>
+      <div class="sep"></div>
+      <div class="grid g3">
+        <div><label>可可粉（堆）</label><input id="outCocoa" type="number" min="0" step="1" value="0"><div class="muted">10下/堆 · 900重/堆 · 198,000/堆</div></div>
+        <div><label>绿茶（堆）</label><input id="outTea" type="number" min="0" step="1" value="0"><div class="muted">10下/堆 · 675重/堆 · 130,500/堆</div></div>
+        <div><label>厕纸（堆）</label><input id="outPaper" type="number" min="0" step="1" value="0"><div class="muted">10下/堆 · 450重/堆 · 78,750/堆</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row"><div><b>豪宅内</b></div><div class="muted">后拿这些</div></div>
+      <div class="sep"></div>
+      <div class="grid g3">
+        <div><label>金条（堆）</label><input id="inGold" type="number" min="0" step="1" value="0"><div class="muted">7下/堆 · 1200重/堆 · 328,333/堆</div></div>
+        <div><label>名画（件）</label><input id="inPaint" type="number" min="0" step="1" value="0"><div class="muted">整件 · 900重/件 · 157,500/件</div></div>
+        <div><label>厕纸（堆）</label><input id="inPaper" type="number" min="0" step="1" value="0"><div class="muted">10下/堆 · 450重/堆 · 78,750/堆</div></div>
+      </div>
+      <div id="goldRule" class="muted warn" style="margin-top:10px;display:none">单人模式下金条自动禁用。</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <div class="smallbtns">
+      <button id="calcBtn" class="primary">计算</button>
+      <button id="sampleSoloGold">测试：单人 1 金条</button>
+      <button id="sampleSoloMix">测试：单人 1画1可可1绿茶</button>
+      <button id="sampleDuoGold">测试：双人 3 金条</button>
+      <button id="copySummary">复制摘要</button>
+      <button id="saveState">保存本页配置</button>
+      <button id="resetState">清空</button>
+    </div>
+  </div>
+
+  <h2>结果总览</h2>
+  <div class="grid g4">
+    <div class="card stat">
+      <div class="muted">当前模式总到手</div>
+      <div class="value mono" id="curTotal">0</div>
+      <div class="muted" id="curTag">未计算</div>
+    </div>
+    <div class="card stat">
+      <div class="muted">当前模式次要（含加成）</div>
+      <div class="value mono" id="curSecondary">0</div>
+      <div class="muted" id="curWeightText">0 / 0</div>
+    </div>
+    <div class="card stat">
+      <div class="muted">理论模式总到手</div>
+      <div class="value mono" id="theoryTotal">0</div>
+      <div class="muted" id="theorySecondaryText">理论次要 0</div>
+    </div>
+    <div class="card stat">
+      <div class="muted">理论 / 当前差值</div>
+      <div class="value mono" id="deltaTotal">0</div>
+      <div class="muted" id="deltaTag">未计算</div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="margin-top:18px">
+    <div class="card">
+      <div class="row"><div><b>当前模式组成</b></div><div class="pill" id="curModeLabel">—</div></div>
+      <div class="barBox" style="margin-top:10px"><div id="curBar" class="bar"></div></div>
+      <div class="legend" id="curLegend" style="margin-top:10px"></div>
+      <div id="summaryShort" class="muted" style="margin-top:10px">未计算</div>
+    </div>
+    <div class="card">
+      <div class="row"><div><b>理论模式组成</b></div><div class="pill">理论</div></div>
+      <div class="barBox" style="margin-top:10px"><div id="theoryBar" class="bar"></div></div>
+      <div class="legend" id="theoryLegend" style="margin-top:10px"></div>
+      <div id="theoryShort" class="muted" style="margin-top:10px">未计算</div>
+    </div>
+  </div>
+
+  <h2>每人独立进度条</h2>
+  <div class="card">
+    <div id="playerBars" class="grid g2"></div>
+  </div>
+
+  <h2>详细结果</h2>
+  <div class="grid g2">
+    <details open>
+      <summary>当前模式</summary>
+      <div id="currentDetails" class="summary" style="margin-top:10px">未计算</div>
+    </details>
+    <details open>
+      <summary>理论模式</summary>
+      <div id="theoryDetails" class="summary" style="margin-top:10px">未计算</div>
+    </details>
+  </div>
+
+  <details style="margin-top:18px">
+    <summary>说明书 / 提示</summary>
+    <div class="summary" style="margin-top:10px">
+这版的核心不是“平均每下”，而是按真实抓取前缀算：
+- 可可粉 / 绿茶 / 厕纸：每堆固定序列 5,5,4,3,2,4,6,6,8,2
+- 金条：每堆固定序列 2,4,2,4,4,4,4
+- 名画按整件
+- 现实模式允许每个玩家最后额外多拿 1 下，但不能是名画
+- 分区顺序固定：豪宅外 → 豪宅内
+- 单人不拿金条
+    </div>
+  </details>
+
+  <div class="footer">本页会自动把当前输入保存到浏览器。示例按钮只改输入，不会锁死你自己的配置。</div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const PRIMARY = {
+    tequila:{name:"龙舌兰", amount:630000, boost:0.20},
+    ruby:{name:"项链", amount:700000, boost:0.10},
+    bonds:{name:"债券", amount:770000, boost:0.05},
+    pink:{name:"粉钻", amount:1300000, boost:0.00},
+    panther:{name:"金豹", amount:1900000, boost:0.00}
+  };
+
+  const COLORS = {
+    cocoa:"var(--cocoa)", tea:"var(--tea)", paper:"var(--paper)", gold:"var(--goldbar)", paint:"var(--painting)"
+  };
+
+  const OUT_SEQ = [5,5,4,3,2,4,6,6,8,2];
+  const GOLD_SEQ = [2,4,2,4,4,4,4];
+
+  const DEF = {
+    cocoa: {key:"cocoa", label:"可可粉", phase:"out", blocks:OUT_SEQ, blockWeight:20, pileValue:198000},
+    tea:   {key:"tea",   label:"绿茶",   phase:"out", blocks:OUT_SEQ, blockWeight:15, pileValue:130500},
+    paperOut:{key:"paperOut", label:"厕纸", phase:"out", blocks:OUT_SEQ, blockWeight:10, pileValue:78750},
+    gold:  {key:"gold",  label:"金条",   phase:"in",  blocks:GOLD_SEQ, blockWeight:50, pileValue:328333},
+    paint: {key:"paint", label:"名画",   phase:"in",  blocks:[1],       blockWeight:900, pileValue:157500, isPaint:true},
+    paperIn:{key:"paperIn", label:"厕纸", phase:"in", blocks:OUT_SEQ, blockWeight:10, pileValue:78750}
+  };
+
+  const fmt = n => Math.round(n).toLocaleString("zh-CN");
+  const fmt1 = n => (Math.round(n*10)/10).toLocaleString("zh-CN");
+  const money = n => Math.round(n).toLocaleString("zh-CN");
+  const byId = id => document.getElementById(id);
+
+  function sum(arr){ return arr.reduce((a,b)=>a+b,0); }
+  function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
+
+  function itemClickValues(def){
+    const totalBlocks = sum(def.blocks);
+    const valuePerBlock = def.pileValue / totalBlocks;
+    return def.blocks.map(b => b * valuePerBlock);
+  }
+  function itemClickWeights(def){
+    return def.blocks.map(b => b * def.blockWeight);
+  }
+  const CLICK_W = {};
+  const CLICK_V = {};
+  Object.keys(DEF).forEach(k => { CLICK_W[k] = itemClickWeights(DEF[k]); CLICK_V[k] = itemClickValues(DEF[k]); });
+
+  function pileOptions(itemKey){
+    const def = DEF[itemKey];
+    const ws = CLICK_W[itemKey], vs = CLICK_V[itemKey];
+    const opts = [{k:0, w:0, v:0}];
+    let w=0, v=0;
+    for(let i=0;i<ws.length;i++){ w += ws[i]; v += vs[i]; opts.push({k:i+1, w, v}); }
+    return opts;
+  }
+  const OPTIONS = {};
+  Object.keys(DEF).forEach(k => OPTIONS[k] = pileOptions(k));
+
+  function buildGroupList(input, players){
+    const groupsOut = [];
+    const groupsIn = [];
+    for(let i=0;i<input.outCocoa;i++) groupsOut.push({groupId:`out-cocoa-${i}`, itemKey:"cocoa", phase:"out", options:OPTIONS.cocoa});
+    for(let i=0;i<input.outTea;i++) groupsOut.push({groupId:`out-tea-${i}`, itemKey:"tea", phase:"out", options:OPTIONS.tea});
+    for(let i=0;i<input.outPaper;i++) groupsOut.push({groupId:`out-paper-${i}`, itemKey:"paperOut", phase:"out", options:OPTIONS.paperOut});
+
+    const goldPiles = (players === 1) ? 0 : input.inGold;
+    for(let i=0;i<goldPiles;i++) groupsIn.push({groupId:`in-gold-${i}`, itemKey:"gold", phase:"in", options:OPTIONS.gold});
+    for(let i=0;i<input.inPaint;i++) groupsIn.push({groupId:`in-paint-${i}`, itemKey:"paint", phase:"in", options:OPTIONS.paint});
+    for(let i=0;i<input.inPaper;i++) groupsIn.push({groupId:`in-paper-${i}`, itemKey:"paperIn", phase:"in", options:OPTIONS.paperIn});
+    return {groupsOut, groupsIn, goldPiles};
+  }
+
+  function groupedDP(groups, cap){
+    let dp = Array(cap+1).fill(-Infinity);
+    dp[0] = 0;
+    const prevTables = [];
+    for(let gi=0; gi<groups.length; gi++){
+      const g = groups[gi];
+      const ndp = Array(cap+1).fill(-Infinity);
+      const prevW = new Int16Array(cap+1);
+      const optIdx = new Int16Array(cap+1);
+      prevW.fill(-1); optIdx.fill(-1);
+      for(let w0=0; w0<=cap; w0++){
+        const base = dp[w0];
+        if(!Number.isFinite(base)) continue;
+        for(let oi=0; oi<g.options.length; oi++){
+          const opt = g.options[oi];
+          const w = w0 + opt.w;
+          if(w > cap) continue;
+          const val = base + opt.v;
+          if(val > ndp[w]){
+            ndp[w] = val;
+            prevW[w] = w0;
+            optIdx[w] = oi;
+          }
+        }
+      }
+      prevTables.push({prevW, optIdx});
+      dp = ndp;
+    }
+    const cache = new Map();
+    function reconstruct(weight){
+      if(cache.has(weight)) return cache.get(weight);
+      const plan = [];
+      let w = weight;
+      for(let gi=groups.length-1; gi>=0; gi--){
+        const tab = prevTables[gi];
+        const oi = tab.optIdx[w];
+        const pw = tab.prevW[w];
+        if(oi < 0 || pw < 0){
+          plan.unshift({groupId:groups[gi].groupId, itemKey:groups[gi].itemKey, phase:groups[gi].phase, k:0});
+          continue;
+        }
+        plan.unshift({groupId:groups[gi].groupId, itemKey:groups[gi].itemKey, phase:groups[gi].phase, k:groups[gi].options[oi].k});
+        w = pw;
+      }
+      cache.set(weight, plan);
+      return plan;
+    }
+    return {dp, reconstruct, groups};
+  }
+
+  function countInsideWeight(plan){
+    let w = 0;
+    for(const p of plan){
+      if(p.phase !== "in" || p.k <= 0) continue;
+      const opts = OPTIONS[p.itemKey][p.k];
+      w += opts.w;
+    }
+    return w;
+  }
+
+  function buildNextClicks(plan, phaseFilter){
+    const out = [];
+    for(const p of plan){
+      if(p.phase !== phaseFilter) continue;
+      const def = DEF[p.itemKey];
+      if(def.isPaint) continue;
+      const idx = p.k;
+      const max = def.blocks.length;
+      if(idx >= max) continue;
+      out.push({
+        itemKey:p.itemKey,
+        groupId:p.groupId,
+        clickIndex: idx + 1,
+        w: CLICK_W[p.itemKey][idx],
+        v: CLICK_V[p.itemKey][idx],
+        phase:p.phase
+      });
+    }
+    return out;
+  }
+
+  function summarizePlan(globalPlan){
+    const buckets = {
+      cocoa:0, tea:0, paper:0, gold:0, paint:0,
+      outPaper:0, inPaper:0
+    };
+    let weight = 0, value = 0;
+    for(const step of globalPlan.steps){
+      const key = step.itemKey;
+      if(key === "cocoa") buckets.cocoa += step.k;
+      if(key === "tea") buckets.tea += step.k;
+      if(key === "paperOut") { buckets.paper += step.k; buckets.outPaper += step.k; }
+      if(key === "paperIn") { buckets.paper += step.k; buckets.inPaper += step.k; }
+      if(key === "gold") buckets.gold += step.k;
+      if(key === "paint") buckets.paint += step.k;
+      weight += OPTIONS[key][step.k].w;
+      value += OPTIONS[key][step.k].v;
+    }
+    return {buckets, weight, value};
+  }
+
+  function playerSolveOne(remInput, mode, playerIndex, totalPlayers){
+    const cap = 1800;
+    const built = buildGroupList(remInput, totalPlayers);
+    const outDP = groupedDP(built.groupsOut, cap);
+    const inDP = groupedDP(built.groupsIn, cap);
+
+    let best = {
+      value:-Infinity, weight:0, outsideWeight:0, insideWeight:0,
+      outsidePlan:[], insidePlan:[], gap:null, mode
+    };
+
+    // No-gap baseline
+    for(let ow=0; ow<=cap; ow++){
+      const ov = outDP.dp[ow];
+      if(!Number.isFinite(ov)) continue;
+      const remain = cap - ow;
+      let bestIw = 0, bestIv = -Infinity;
+      for(let iw=0; iw<=remain; iw++){
+        const iv = inDP.dp[iw];
+        if(iv > bestIv){ bestIv = iv; bestIw = iw; }
+      }
+      const totalVal = ov + bestIv;
+      if(totalVal > best.value){
+        best = {
+          value:totalVal, weight:ow+bestIw, outsideWeight:ow, insideWeight:bestIw,
+          outsidePlan:outDP.reconstruct(ow), insidePlan:inDP.reconstruct(bestIw), gap:null, mode
+        };
+      }
+    }
+
+    if(mode === "real"){
+      // Gap candidates: exactly one extra click as the player's final click.
+      let gapBest = best;
+      for(let ow=0; ow<=cap; ow++){
+        const ov = outDP.dp[ow];
+        if(!Number.isFinite(ov)) continue;
+        for(let iw=0; iw<=cap-ow; iw++){
+          const iv = inDP.dp[iw];
+          if(!Number.isFinite(iv)) continue;
+          const baseW = ow + iw;
+          const baseV = ov + iv;
+          const outPlan = outDP.reconstruct(ow);
+          const inPlan = inDP.reconstruct(iw);
+          const insideUsed = iw > 0;
+          let candidates = [];
+          // Since order is out -> in, final click can be:
+          // - from inside, whether or not inside already has picks
+          // - from outside only if inside phase unused
+          candidates = candidates.concat(buildNextClicks(inPlan, "in"));
+          if(!insideUsed) candidates = candidates.concat(buildNextClicks(outPlan, "out"));
+
+          for(const c of candidates){
+            const finalW = baseW + c.w;
+            const over = finalW - cap;
+            if(!(over > 0 && over < c.w)) continue;
+            const val = baseV + c.v;
+            if(val > gapBest.value){
+              gapBest = {
+                value:val, weight:finalW, outsideWeight:ow, insideWeight:iw,
+                outsidePlan:outPlan, insidePlan:inPlan,
+                gap:{
+                  itemKey:c.itemKey, groupId:c.groupId, clickIndex:c.clickIndex, phase:c.phase,
+                  w:c.w, v:c.v, over, remainBefore:c.w - over
+                },
+                mode
+              };
+            }
+          }
+        }
+      }
+      best = gapBest;
+    }
+
+    const steps = [];
+    for(const p of best.outsidePlan){ if(p.k > 0) steps.push(p); }
+    for(const p of best.insidePlan){ if(p.k > 0) steps.push(p); }
+    if(best.gap){
+      // add one extra click to display outcome as final counts
+      const found = steps.find(s => s.groupId === best.gap.groupId);
+      if(found) found.k += 1;
+      else steps.push({groupId:best.gap.groupId, itemKey:best.gap.itemKey, phase:best.gap.phase, k:1});
+    }
+
+    // phase summary
+    const phaseSummary = {
+      out: {cocoa:0, tea:0, paper:0},
+      in: {gold:0, paint:0, paper:0}
+    };
+    for(const s of steps){
+      if(s.phase === "out"){
+        if(s.itemKey === "cocoa") phaseSummary.out.cocoa += s.k;
+        if(s.itemKey === "tea") phaseSummary.out.tea += s.k;
+        if(s.itemKey === "paperOut") phaseSummary.out.paper += s.k;
+      } else {
+        if(s.itemKey === "gold") phaseSummary.in.gold += s.k;
+        if(s.itemKey === "paint") phaseSummary.in.paint += s.k;
+        if(s.itemKey === "paperIn") phaseSummary.in.paper += s.k;
+      }
+    }
+
+    return {
+      playerIndex,
+      value:best.value,
+      weight:best.weight,
+      over:Math.max(0, best.weight - cap),
+      gap:best.gap,
+      steps,
+      phaseSummary
+    };
+  }
+
+  function applyPlayerPlan(remInput, playerPlan, totalPlayers){
+    const used = {outCocoa:0, outTea:0, outPaper:0, inGold:0, inPaint:0, inPaper:0};
+    for(const s of playerPlan.steps){
+      const itemKey = s.itemKey;
+      if(itemKey === "cocoa") used.outCocoa += s.k / DEF.cocoa.blocks.length;
+      if(itemKey === "tea") used.outTea += s.k / DEF.tea.blocks.length;
+      if(itemKey === "paperOut") used.outPaper += s.k / DEF.paperOut.blocks.length;
+      if(itemKey === "gold") used.inGold += s.k / DEF.gold.blocks.length;
+      if(itemKey === "paint") used.inPaint += s.k;
+      if(itemKey === "paperIn") used.inPaper += s.k / DEF.paperIn.blocks.length;
+    }
+    // Because each pile is discrete prefix-based, simply subtracting fractional piles is not enough.
+    // Instead, consume exact pile prefixes from left to right.
+    function consumePiles(count, itemKey, clicksWanted){
+      let piles = Math.max(0, remInput[count]|0);
+      if(clicksWanted <= 0) return;
+      const maxClicks = DEF[itemKey].blocks.length;
+      // Convert inventory count into queue of piles; consume clicks across piles sequentially.
+      // We only need updated pile count for future player planning. Since future planning rebuilds fresh groups from counts,
+      // we approximate by reducing full piles first and one partial remainder into one less pile when needed.
+      const full = Math.floor(clicksWanted / maxClicks);
+      const rem = clicksWanted % maxClicks;
+      piles -= full;
+      if(rem > 0) piles -= 1;
+      remInput[count] = Math.max(0, piles);
+    }
+    // The sequential player solver on count-only inventory cannot preserve partial piles across players.
+    // To keep correctness, we need exact pile-level remaining state externally. So this function is not used.
+    return remInput;
+  }
+
+
+  function getStateList(state, itemKey){
+    if(itemKey === "cocoa") return state.out.cocoa;
+    if(itemKey === "tea") return state.out.tea;
+    if(itemKey === "paperOut") return state.out.paper;
+    if(itemKey === "gold") return state.in.gold;
+    if(itemKey === "paint") return state.in.paint;
+    if(itemKey === "paperIn") return state.in.paper;
+    return [];
+  }
+
+  function buildSeqOptionsFromState(takenList, itemKey){
+    const def = DEF[itemKey];
+    const opts = [{k:0,w:0,v:0}];
+    let cumK = 0, cumW = 0, cumV = 0;
+    if(def.isPaint){
+      let remaining = 0;
+      for(const t of takenList) if(t < 1) remaining++;
+      for(let i=0;i<remaining;i++){
+        cumK += 1; cumW += def.blockWeight; cumV += def.pileValue;
+        opts.push({k:cumK,w:cumW,v:cumV});
+      }
+      return opts;
+    }
+    for(const taken of takenList){
+      for(let idx=taken; idx<def.blocks.length; idx++){
+        cumK += 1;
+        cumW += CLICK_W[itemKey][idx];
+        cumV += CLICK_V[itemKey][idx];
+        opts.push({k:cumK,w:cumW,v:cumV});
+      }
+    }
+    return opts;
+  }
+
+  function groupedDPSeq(groups, cap){
+    let dp = Array(cap+1).fill(-Infinity);
+    dp[0] = 0;
+    const prevTables = [];
+    for(let gi=0; gi<groups.length; gi++){
+      const g = groups[gi];
+      const ndp = Array(cap+1).fill(-Infinity);
+      const prevW = new Int32Array(cap+1); prevW.fill(-1);
+      const optIdx = new Int32Array(cap+1); optIdx.fill(-1);
+      for(let w0=0; w0<=cap; w0++){
+        const base = dp[w0];
+        if(!Number.isFinite(base)) continue;
+        for(let oi=0; oi<g.options.length; oi++){
+          const opt = g.options[oi];
+          const w = w0 + opt.w;
+          if(w > cap) continue;
+          const val = base + opt.v;
+          if(val > ndp[w]){
+            ndp[w] = val; prevW[w] = w0; optIdx[w] = oi;
+          }
+        }
+      }
+      prevTables.push({prevW,optIdx});
+      dp = ndp;
+    }
+    const cache = new Map();
+    function reconstruct(weight){
+      if(cache.has(weight)) return cache.get(weight);
+      const plan = [];
+      let w = weight;
+      for(let gi=groups.length-1; gi>=0; gi--){
+        const tab = prevTables[gi];
+        const oi = tab.optIdx[w];
+        const pw = tab.prevW[w];
+        const g = groups[gi];
+        if(oi < 0 || pw < 0) plan.unshift({itemKey:g.itemKey,phase:g.phase,k:0});
+        else {
+          const opt = g.options[oi];
+          plan.unshift({itemKey:g.itemKey,phase:g.phase,k:opt.k});
+          w = pw;
+        }
+      }
+      cache.set(weight, plan);
+      return plan;
+    }
+    return {dp,reconstruct};
+  }
+
+  function breakdownFromTotal(takenList, itemKey, totalChosen){
+    const def = DEF[itemKey];
+    if(def.isPaint){
+      const parts = [];
+      let rem = totalChosen;
+      for(let i=0;i<takenList.length && rem>0;i++){
+        if(takenList[i] >= 1) continue;
+        parts.push({pileNumber:i+1, units:1});
+        rem -= 1;
+      }
+      return parts;
+    }
+    let rem = totalChosen;
+    const parts = [];
+    for(let i=0;i<takenList.length && rem>0;i++){
+      const start = takenList[i];
+      const avail = def.blocks.length - start;
+      const take = Math.min(avail, rem);
+      if(take > 0){
+        parts.push({pileNumber:i+1, startClick:start+1, endClick:start+take, clicks:take});
+        rem -= take;
+      }
+    }
+    return parts;
+  }
+
+  function nextClickAfterTotal(takenList, itemKey, totalChosen){
+    const def = DEF[itemKey];
+    if(def.isPaint) return null;
+    let rem = totalChosen;
+    for(let i=0;i<takenList.length;i++){
+      const start = takenList[i];
+      const avail = def.blocks.length - start;
+      if(rem < avail){
+        const clickInPile = start + rem + 1;
+        return {
+          itemKey,
+          pileNumber:i+1,
+          clickInPile,
+          w: CLICK_W[itemKey][clickInPile-1],
+          v: CLICK_V[itemKey][clickInPile-1]
+        };
+      }
+      rem -= avail;
+    }
+    return null;
+  }
+
+  function applyTotalToState(takenList, itemKey, totalChosen){
+    const def = DEF[itemKey];
+    let rem = totalChosen;
+    if(def.isPaint){
+      for(let i=0;i<takenList.length && rem>0;i++){
+        if(takenList[i] >= 1) continue;
+        takenList[i] = 1;
+        rem -= 1;
+      }
+      return;
+    }
+    for(let i=0;i<takenList.length && rem>0;i++){
+      const avail = def.blocks.length - takenList[i];
+      const take = Math.min(avail, rem);
+      if(take > 0){
+        takenList[i] += take;
+        rem -= take;
+      }
+    }
+  }
+
+  function sumPlanWeightValue(plan){
+    let weight = 0, value = 0;
+    for(const s of plan){
+      if(s.weight != null && s.value != null){
+        weight += s.weight; value += s.value;
+      }else{
+        const opt = OPTIONS[s.itemKey][s.k];
+        if(opt){ weight += opt.w; value += opt.v; }
+      }
+    }
+    return {weight, value};
+  }
+
+  function makeStep(itemKey, k, breakdown){
+    let weight = 0, value = 0;
+    const def = DEF[itemKey];
+    if(def.isPaint){
+      weight = 900 * k;
+      value = 157500 * k;
+    }else{
+      for(const part of breakdown){
+        for(let c=part.startClick; c<=part.endClick; c++){
+          weight += CLICK_W[itemKey][c-1];
+          value += CLICK_V[itemKey][c-1];
+        }
+      }
+    }
+    return {itemKey, k, weight, value, breakdown};
+  }
+
+
+  function solvePhaseSequential(input, mode, players){
+    const state = {
+      out: {
+        cocoa: Array.from({length:input.outCocoa}, () => 0),
+        tea: Array.from({length:input.outTea}, () => 0),
+        paper: Array.from({length:input.outPaper}, () => 0)
+      },
+      in: {
+        gold: Array.from({length:(players===1?0:input.inGold)}, () => 0),
+        paint: Array.from({length:input.inPaint}, () => 0),
+        paper: Array.from({length:input.inPaper}, () => 0)
+      }
+    };
+
+    const playersOut = [];
+    for(let idx=0; idx<players; idx++){
+      const groupsOut = [
+        {itemKey:"cocoa", phase:"out", options:buildSeqOptionsFromState(state.out.cocoa, "cocoa")},
+        {itemKey:"tea", phase:"out", options:buildSeqOptionsFromState(state.out.tea, "tea")},
+        {itemKey:"paperOut", phase:"out", options:buildSeqOptionsFromState(state.out.paper, "paperOut")}
+      ];
+      const groupsIn = [
+        {itemKey:"gold", phase:"in", options:buildSeqOptionsFromState(state.in.gold, "gold")},
+        {itemKey:"paint", phase:"in", options:buildSeqOptionsFromState(state.in.paint, "paint")},
+        {itemKey:"paperIn", phase:"in", options:buildSeqOptionsFromState(state.in.paper, "paperIn")}
+      ];
+
+      const outDP = groupedDPSeq(groupsOut, 1800);
+      const inDP = groupedDPSeq(groupsIn, 1800);
+
+      let best = {value:-Infinity, weight:0, outPlan:null, inPlan:null, gap:null};
+      for(let ow=0; ow<=1800; ow++){
+        const ov = outDP.dp[ow];
+        if(!Number.isFinite(ov)) continue;
+        let bestIw = 0, bestIv = -Infinity;
+        for(let iw=0; iw<=1800-ow; iw++){
+          const iv = inDP.dp[iw];
+          if(iv > bestIv){ bestIv = iv; bestIw = iw; }
+        }
+        if(ov + bestIv > best.value){
+          best = {value:ov+bestIv, weight:ow+bestIw, outPlan:outDP.reconstruct(ow), inPlan:inDP.reconstruct(bestIw), gap:null};
+        }
+      }
+
+      if(mode === "real"){
+        let gapBest = best;
+        for(let ow=0; ow<=1800; ow++){
+          const ov = outDP.dp[ow];
+          if(!Number.isFinite(ov)) continue;
+          for(let iw=0; iw<=1800-ow; iw++){
+            const iv = inDP.dp[iw];
+            if(!Number.isFinite(iv)) continue;
+
+            const outPlan = outDP.reconstruct(ow);
+            const inPlan = inDP.reconstruct(iw);
+            const baseW = ow + iw;
+            const baseV = ov + iv;
+            const insideUsed = inPlan.some(x => x.k > 0);
+
+            let candidates = [];
+            // In reality, final click can only be from the current frontier of the route:
+            // inside frontier if any inside picks exist, otherwise outside frontier.
+            if(insideUsed){
+              for(const s of inPlan){
+                const takenList = s.itemKey === "gold" ? state.in.gold : s.itemKey === "paperIn" ? state.in.paper : state.in.paint;
+                const nx = nextClickAfterTotal(takenList, s.itemKey, s.k);
+                if(nx) candidates.push({...nx, phase:"in"});
+              }
+            } else {
+              for(const s of outPlan){
+                const takenList = s.itemKey === "cocoa" ? state.out.cocoa : s.itemKey === "tea" ? state.out.tea : state.out.paper;
+                const nx = nextClickAfterTotal(takenList, s.itemKey, s.k);
+                if(nx) candidates.push({...nx, phase:"out"});
+              }
+            }
+
+            for(const c of candidates){
+              const finalW = baseW + c.w;
+              const over = finalW - 1800;
+              if(!(over > 0 && over < c.w)) continue;
+              const val = baseV + c.v;
+              if(val > gapBest.value){
+                gapBest = {
+                  value: val,
+                  weight: finalW,
+                  outPlan,
+                  inPlan,
+                  gap: {
+                    itemKey: c.itemKey,
+                    phase: c.phase,
+                    pileNumber: c.pileNumber,
+                    clickInPile: c.clickInPile,
+                    w: c.w,
+                    v: c.v,
+                    over,
+                    remainBefore: c.w - over
+                  }
+                };
+              }
+            }
+          }
+        }
+        best = gapBest;
+      }
+
+      const byItem = {
+        cocoa:{clicks:0, breakdown:[]},
+        tea:{clicks:0, breakdown:[]},
+        paperOut:{clicks:0, breakdown:[]},
+        gold:{clicks:0, breakdown:[]},
+        paint:{units:0, breakdown:[]},
+        paperIn:{clicks:0, breakdown:[]}
+      };
+
+      // Build step totals from chosen plans, then apply single gap if any.
+      for(const s of best.outPlan || []){
+        if(!s.k) continue;
+        const takenList = s.itemKey === "cocoa" ? state.out.cocoa : s.itemKey === "tea" ? state.out.tea : state.out.paper;
+        byItem[s.itemKey].clicks = s.k;
+        byItem[s.itemKey].breakdown = breakdownFromTotal(takenList, s.itemKey, s.k);
+      }
+      for(const s of best.inPlan || []){
+        if(!s.k) continue;
+        if(s.itemKey === "paint"){
+          byItem.paint.units = s.k;
+          byItem.paint.breakdown = breakdownFromTotal(state.in.paint, "paint", s.k);
+        } else {
+          const takenList = s.itemKey === "gold" ? state.in.gold : state.in.paper;
+          byItem[s.itemKey].clicks = s.k;
+          byItem[s.itemKey].breakdown = breakdownFromTotal(takenList, s.itemKey, s.k);
+        }
+      }
+      if(best.gap){
+        const b = byItem[best.gap.itemKey];
+        if(best.gap.itemKey === "paint"){
+          b.units = (b.units || 0) + 1;
+        } else {
+          b.clicks = (b.clicks || 0) + 1;
+          const parts = b.breakdown || [];
+          const last = parts[parts.length-1];
+          if(last && last.pileNumber === best.gap.pileNumber && last.endClick + 1 === best.gap.clickInPile){
+            last.endClick += 1;
+            last.clicks += 1;
+          } else {
+            parts.push({pileNumber:best.gap.pileNumber, startClick:best.gap.clickInPile, endClick:best.gap.clickInPile, clicks:1});
+          }
+          b.breakdown = parts;
+        }
+      }
+
+      const steps = [];
+      if(byItem.cocoa.clicks) steps.push(makeStep("cocoa", byItem.cocoa.clicks, byItem.cocoa.breakdown));
+      if(byItem.tea.clicks) steps.push(makeStep("tea", byItem.tea.clicks, byItem.tea.breakdown));
+      const totalPaperClicks = (byItem.paperOut.clicks||0) + (byItem.paperIn.clicks||0);
+      if(byItem.paperOut.clicks) steps.push(makeStep("paperOut", byItem.paperOut.clicks, byItem.paperOut.breakdown));
+      if(byItem.gold.clicks) steps.push(makeStep("gold", byItem.gold.clicks, byItem.gold.breakdown));
+      if(byItem.paint.units) steps.push({itemKey:"paint", k:byItem.paint.units, weight:900*byItem.paint.units, value:157500*byItem.paint.units, breakdown:byItem.paint.breakdown});
+      if(byItem.paperIn.clicks) steps.push(makeStep("paperIn", byItem.paperIn.clicks, byItem.paperIn.breakdown));
+
+      // Apply to state in strict sequence
+      applyTotalToState(state.out.cocoa, "cocoa", byItem.cocoa.clicks || 0);
+      applyTotalToState(state.out.tea, "tea", byItem.tea.clicks || 0);
+      applyTotalToState(state.out.paper, "paperOut", byItem.paperOut.clicks || 0);
+      applyTotalToState(state.in.gold, "gold", byItem.gold.clicks || 0);
+      applyTotalToState(state.in.paint, "paint", byItem.paint.units || 0);
+      applyTotalToState(state.in.paper, "paperIn", byItem.paperIn.clicks || 0);
+
+      playersOut.push({
+        playerIndex: idx+1,
+        value: best.value,
+        weight: best.weight,
+        over: Math.max(0, best.weight - 1800),
+        gap: best.gap,
+        steps,
+        byItem
+      });
+    }
+
+    const allSteps = [];
+    playersOut.forEach(p => p.steps.forEach(s => allSteps.push(s)));
+    const totalValue = playersOut.reduce((a,b)=>a+b.value,0);
+    const totalWeight = playersOut.reduce((a,b)=>a+b.weight,0);
+    return {players:playersOut, steps:allSteps, value:totalValue, weight:totalWeight};
+  }
+
+  function solveTheory(input, players){
+    const totalCap = 1800 * players;
+    const groups = [];
+    for(let i=0;i<input.outCocoa;i++) groups.push({groupId:`out-cocoa-${i}`, itemKey:"cocoa", options:OPTIONS.cocoa});
+    for(let i=0;i<input.outTea;i++) groups.push({groupId:`out-tea-${i}`, itemKey:"tea", options:OPTIONS.tea});
+    for(let i=0;i<input.outPaper;i++) groups.push({groupId:`out-paper-${i}`, itemKey:"paperOut", options:OPTIONS.paperOut});
+    for(let i=0;i<input.inGold;i++) groups.push({groupId:`in-gold-${i}`, itemKey:"gold", options:OPTIONS.gold});
+    for(let i=0;i<input.inPaint;i++) groups.push({groupId:`in-paint-${i}`, itemKey:"paint", options:OPTIONS.paint});
+    for(let i=0;i<input.inPaper;i++) groups.push({groupId:`in-paper-${i}`, itemKey:"paperIn", options:OPTIONS.paperIn});
+    const res = groupedDP(groups, totalCap);
+    let bestW = 0, bestV = -Infinity;
+    for(let w=0; w<=totalCap; w++) if(res.dp[w] > bestV){ bestV = res.dp[w]; bestW = w; }
+    const plan = res.reconstruct(bestW).filter(x => x.k > 0);
+    return {steps:plan, value:bestV, weight:bestW};
+  }
+
+  function aggregateByDisplay(steps){
+    const out = {
+      cocoa:{label:"可可粉", clicks:0, units:0, value:0, weight:0, color:COLORS.cocoa},
+      tea:{label:"绿茶", clicks:0, units:0, value:0, weight:0, color:COLORS.tea},
+      paper:{label:"厕纸", clicks:0, units:0, value:0, weight:0, color:COLORS.paper},
+      gold:{label:"金条", clicks:0, units:0, value:0, weight:0, color:COLORS.gold},
+      paint:{label:"名画", clicks:0, units:0, value:0, weight:0, color:COLORS.paint}
+    };
+    for(const s of steps){
+      const wv = (s.weight != null && s.value != null) ? {w:s.weight, v:s.value} : OPTIONS[s.itemKey][s.k];
+      let bucket = null;
+      if(s.itemKey === "cocoa") bucket = out.cocoa;
+      if(s.itemKey === "tea") bucket = out.tea;
+      if(s.itemKey === "paperOut" || s.itemKey === "paperIn") bucket = out.paper;
+      if(s.itemKey === "gold") bucket = out.gold;
+      if(s.itemKey === "paint") bucket = out.paint;
+      bucket.weight += wv.w;
+      bucket.value += wv.v;
+      if(s.itemKey === "paint") bucket.units += s.k;
+      else bucket.clicks += s.k;
+    }
+    return out;
+  }
+
+  function renderMixBar(el, legendEl, agg, totalWeight){
+    el.innerHTML = "";
+    legendEl.innerHTML = "";
+    const keys = ["cocoa","tea","paper","gold","paint"];
+    keys.forEach(k => {
+      const a = agg[k];
+      if(a.weight <= 0 || totalWeight <= 0) return;
+      const seg = document.createElement("div");
+      seg.className = "seg";
+      seg.style.width = (a.weight / totalWeight * 100) + "%";
+      seg.style.background = a.color;
+      seg.title = `${a.label} ${fmt1(a.weight)} 重`;
+      el.appendChild(seg);
+
+      const item = document.createElement("span");
+      item.innerHTML = `<i class="dot" style="background:${a.color}"></i>${a.label}`;
+      legendEl.appendChild(item);
+    });
+  }
+
+  function payout(baseSecondary, primaryAmount, boost, cut, eliteBonus){
+    return (primaryAmount + baseSecondary*(1+boost) + 20000) * 0.88 * cut + eliteBonus;
+  }
+
+  function getInput(){
+    return {
+      players: parseInt(byId("players").value, 10),
+      cut: byId("ignoreCut").checked ? 1 : Math.max(0, Math.min(1, parseFloat(byId("cut").value || "0"))),
+      difficulty: byId("difficulty").value,
+      elite: byId("elite").checked,
+      primaryType: byId("primaryType").value,
+      mode: document.querySelector("input[name=mode]:checked").value,
+      outCocoa: Math.max(0, parseInt(byId("outCocoa").value||"0",10)),
+      outTea: Math.max(0, parseInt(byId("outTea").value||"0",10)),
+      outPaper: Math.max(0, parseInt(byId("outPaper").value||"0",10)),
+      inGold: Math.max(0, parseInt(byId("inGold").value||"0",10)),
+      inPaint: Math.max(0, parseInt(byId("inPaint").value||"0",10)),
+      inPaper: Math.max(0, parseInt(byId("inPaper").value||"0",10))
+    };
+  }
+
+  function displayName(itemKey){
+    if(itemKey === "paperOut") return "厕纸（外）";
+    if(itemKey === "paperIn") return "厕纸（内）";
+    return DEF[itemKey] ? DEF[itemKey].label : itemKey;
+  }
+
+  function fmtBreak(parts, noun="下", prefix=""){
+    if(!parts || !parts.length) return "0";
+    return parts.map(x => {
+      if(x.units) return `${prefix}第${x.pileNumber}件`;
+      return `${prefix}第${x.pileNumber}堆 ${x.startClick}-${x.endClick}${noun}`;
+    }).join(" + ");
+  }
+
+  function syncPrimary(){
+    const inp = getInput();
+    const p = PRIMARY[inp.primaryType];
+    const amount = inp.difficulty === "hard" ? p.amount * 1.10 : p.amount;
+    byId("primaryAmount").value = Math.round(amount);
+    byId("boostShow").value = `+${Math.round(p.boost*100)}%`;
+    byId("eliteHint").textContent = inp.difficulty === "hard" ? "困难 +100,000" : "普通 +50,000";
+    byId("goldRule").style.display = inp.players === 1 ? "" : "none";
+  }
+
+  function summaryText(title, result, primaryAmount, boost, cut, eliteBonus){
+    const secBase = result.value;
+    const secBoosted = secBase * (1 + boost);
+    const total = payout(secBase, primaryAmount, boost, cut, eliteBonus);
+    let lines = [];
+    lines.push(`${title}`);
+    lines.push(`总到手：${money(total)}`);
+    lines.push(`次要（原始 / 含加成）：${money(secBase)} / ${money(secBoosted)}`);
+    lines.push(`总重量：${fmt1(result.weight)}`);
+    if(result.players){
+      result.players.forEach(p => {
+        const parts = [];
+        if(p.byItem.cocoa.clicks) parts.push(`可可粉 ${p.byItem.cocoa.clicks}下`);
+        if(p.byItem.tea.clicks) parts.push(`绿茶 ${p.byItem.tea.clicks}下`);
+        if(p.byItem.paperOut.clicks) parts.push(`厕纸（外） ${p.byItem.paperOut.clicks}下`);
+        if(p.byItem.gold.clicks) parts.push(`金条 ${p.byItem.gold.clicks}下`);
+        if(p.byItem.paint.units) parts.push(`名画 ${p.byItem.paint.units}件`);
+        if(p.byItem.paperIn.clicks) parts.push(`厕纸（内） ${p.byItem.paperIn.clicks}下`);
+        const gap = p.gap ? `；缝隙：${displayName(p.gap.itemKey)} 第${p.gap.pileNumber}堆第${p.gap.clickInPile}下（超 ${fmt1(p.gap.over)}）` : "";
+        lines.push(`P${p.playerIndex}：${parts.join(" / ") || "空"}${gap}`);
+      });
+    } else {
+      const agg = aggregateByDisplay(result.steps);
+      const parts = [];
+      if(agg.cocoa.clicks) parts.push(`可可粉 ${agg.cocoa.clicks}下`);
+      if(agg.tea.clicks) parts.push(`绿茶 ${agg.tea.clicks}下`);
+      if(agg.paper.clicks) parts.push(`厕纸 ${agg.paper.clicks}下`);
+      if(agg.gold.clicks) parts.push(`金条 ${agg.gold.clicks}下`);
+      if(agg.paint.units) parts.push(`名画 ${agg.paint.units}件`);
+      lines.push(parts.join(" / ") || "空");
+    }
+    return lines.join("\n");
+  }
+
+  function renderPlayerBars(players){
+    const wrap = byId("playerBars");
+    wrap.innerHTML = "";
+    if(!players || !players.length){
+      wrap.innerHTML = '<div class="muted">未计算</div>';
+      return;
+    }
+    players.forEach(p => {
+      const agg = aggregateByDisplay(p.steps);
+      const card = document.createElement("div");
+      card.className = "playerCard stack";
+      const head = document.createElement("div");
+      head.className = "row";
+      head.innerHTML = `<div><b>P${p.playerIndex}</b></div><div class="muted">${fmt1(p.weight)} / 1800${p.gap ? ` · UI缝隙 ${displayName(p.gap.itemKey)} 第${p.gap.pileNumber}堆第${p.gap.clickInPile}下` : ""}</div>`;
+      const box = document.createElement("div");
+      box.className = "barBox";
+      const bar = document.createElement("div");
+      bar.className = "bar";
+      box.appendChild(bar);
+      const legend = document.createElement("div");
+      legend.className = "legend";
+      renderMixBar(bar, legend, agg, Math.max(p.weight, 1));
+      const note = document.createElement("div");
+      note.className = "muted";
+      note.textContent = p.over > 0 ? `超重 ${fmt1(p.over)}（现实模式合法 UI 缝隙）` : "未超重";
+      card.appendChild(head); card.appendChild(box); card.appendChild(legend); card.appendChild(note);
+      wrap.appendChild(card);
+    });
+  }
+
+  function renderDetails(el, title, result, primaryAmount, boost, cut, eliteBonus, mode){
+    const secBase = result.value;
+    const secBoosted = secBase * (1 + boost);
+    const total = payout(secBase, primaryAmount, boost, cut, eliteBonus);
+    let lines = [];
+    lines.push(`${title}`);
+    lines.push(`总到手：${money(total)}`);
+    lines.push(`次要（原始）：${money(secBase)}`);
+    lines.push(`次要（含加成）：${money(secBoosted)}  [+${Math.round(boost*100)}%]`);
+    lines.push(`重量：${fmt1(result.weight)} / ${fmt1(getInput().players*1800)}`);
+    lines.push("");
+    if(result.players){
+      result.players.forEach(p => {
+        lines.push(`P${p.playerIndex}`);
+        lines.push(`  重量：${fmt1(p.weight)} / 1800`);
+        lines.push(`  可可粉：${p.byItem.cocoa.clicks} 下  [${fmtBreak(p.byItem.cocoa.breakdown)}]`);
+        lines.push(`  绿茶：${p.byItem.tea.clicks} 下  [${fmtBreak(p.byItem.tea.breakdown)}]`);
+        lines.push(`  厕纸（外）：${p.byItem.paperOut.clicks} 下  [${fmtBreak(p.byItem.paperOut.breakdown)}]`);
+        lines.push(`  金条：${p.byItem.gold.clicks} 下  [${fmtBreak(p.byItem.gold.breakdown)}]`);
+        lines.push(`  名画：${p.byItem.paint.units} 件  [${fmtBreak(p.byItem.paint.breakdown, "件")}]`);
+        lines.push(`  厕纸（内）：${p.byItem.paperIn.clicks} 下  [${fmtBreak(p.byItem.paperIn.breakdown)}]`);
+        if(p.gap){
+          lines.push(`  UI缝隙：${displayName(p.gap.itemKey)} 第 ${p.gap.pileNumber}堆第 ${p.gap.clickInPile} 下`);
+          lines.push(`  缝隙前剩余：${fmt1(p.gap.remainBefore)} / 这一下重量：${fmt1(p.gap.w)} / 最终超重：${fmt1(p.gap.over)}`);
+        }
+        lines.push("");
+      });
+    } else {
+      const agg = aggregateByDisplay(result.steps);
+      lines.push(`可可粉：${agg.cocoa.clicks} 下`);
+      lines.push(`绿茶：${agg.tea.clicks} 下`);
+      lines.push(`厕纸：${agg.paper.clicks} 下`);
+      lines.push(`金条：${agg.gold.clicks} 下`);
+      lines.push(`名画：${agg.paint.units} 件`);
+      lines.push("");
+      lines.push(`理论模式不看豪宅外→豪宅内顺序，也不看单人禁金条。`);
+    }
+    el.textContent = lines.join("\n");
+  }
+
+  function persist(){
+    const inp = getInput();
+    localStorage.setItem("cppc_v361_state", JSON.stringify(inp));
+  }
+  function restore(){
+    const raw = localStorage.getItem("cppc_v361_state");
+    if(!raw) return;
+    try{
+      const s = JSON.parse(raw);
+      for(const [k,v] of Object.entries(s)){
+        const el = byId(k);
+        if(el){
+          if(el.type === "checkbox") el.checked = !!v;
+          else el.value = v;
+        }
+      }
+      const mode = s.mode || "calc";
+      const radio = document.querySelector(`input[name=mode][value="${mode}"]`);
+      if(radio) radio.checked = true;
+    }catch(e){}
+  }
+
+  function setExample(kind){
+    if(kind === "soloGold"){
+      byId("players").value = 1;
+      byId("difficulty").value = "normal";
+      byId("elite").checked = false;
+      byId("primaryType").value = "tequila";
+      byId("outCocoa").value = 0; byId("outTea").value = 0; byId("outPaper").value = 0;
+      byId("inGold").value = 1; byId("inPaint").value = 0; byId("inPaper").value = 0;
+    }
+    if(kind === "soloMix"){
+      byId("players").value = 1;
+      byId("difficulty").value = "normal";
+      byId("elite").checked = true;
+      byId("primaryType").value = "pink";
+      byId("outCocoa").value = 1; byId("outTea").value = 1; byId("outPaper").value = 0;
+      byId("inGold").value = 0; byId("inPaint").value = 1; byId("inPaper").value = 0;
+    }
+    if(kind === "duoGold"){
+      byId("players").value = 2;
+      byId("difficulty").value = "hard";
+      byId("elite").checked = true;
+      byId("primaryType").value = "bonds";
+      byId("outCocoa").value = 0; byId("outTea").value = 0; byId("outPaper").value = 0;
+      byId("inGold").value = 3; byId("inPaint").value = 0; byId("inPaper").value = 0;
+    }
+    syncPrimary(); persist(); runCalc();
+  }
+
+  function runCalc(){
+    syncPrimary();
+    persist();
+    const inp = getInput();
+    const p = PRIMARY[inp.primaryType];
+    const primaryAmount = inp.difficulty === "hard" ? p.amount * 1.10 : p.amount;
+    const eliteBonus = inp.elite ? (inp.difficulty === "hard" ? 100000 : 50000) : 0;
+
+    const current = (inp.mode === "theory")
+      ? solveTheory(inp, inp.players)
+      : solvePhaseSequential(inp, inp.mode, inp.players);
+    const theory = solveTheory(inp, inp.players);
+
+    const curSecondary = current.value * (1 + p.boost);
+    const curTotal = payout(current.value, primaryAmount, p.boost, inp.cut, eliteBonus);
+    const theorySecondary = theory.value * (1 + p.boost);
+    const theoryTotal = payout(theory.value, primaryAmount, p.boost, inp.cut, eliteBonus);
+    const delta = theoryTotal - curTotal;
+
+    byId("curModeLabel").textContent = inp.mode === "calc" ? "计算模式" : inp.mode === "real" ? "现实模式" : "理论模式";
+    byId("curTotal").textContent = money(curTotal);
+    byId("curSecondary").textContent = money(curSecondary);
+    byId("curWeightText").textContent = `${fmt1(current.weight)} / ${fmt1(inp.players*1800)}`;
+    byId("curTag").innerHTML =
+      inp.mode === "calc" ? '<span class="badge-ok">真实分区 · 不允许超重</span>' :
+      inp.mode === "real" ? '<span class="badge-ok">真实分区 · 每人最后一下可吃 UI 缝隙</span>' :
+      '<span class="badge-ok">纯收益最大化</span>';
+
+    byId("theoryTotal").textContent = money(theoryTotal);
+    byId("theorySecondaryText").textContent = `理论次要 ${money(theorySecondary)}`;
+    byId("deltaTotal").textContent = money(delta);
+    byId("deltaTag").textContent = delta > 0 ? `理论比当前多 ${money(delta)}` : "当前已等于理论";
+
+    const curAgg = aggregateByDisplay(current.steps);
+    const theoryAgg = aggregateByDisplay(theory.steps);
+    renderMixBar(byId("curBar"), byId("curLegend"), curAgg, Math.max(current.weight,1));
+    renderMixBar(byId("theoryBar"), byId("theoryLegend"), theoryAgg, Math.max(theory.weight,1));
+
+    byId("summaryShort").textContent =
+      inp.mode === "real" && current.players && current.players.some(p => p.gap)
+        ? `现实模式已使用 UI 缝隙；最后一下位置写在下方每人独立进度条里。`
+        : `当前模式未使用 UI 缝隙，或没有必要用。`;
+    byId("theoryShort").textContent = "理论模式只看收益，不看先外后内、单人禁金条、UI 缝隙。";
+
+    renderPlayerBars(current.players || []);
+    renderDetails(byId("currentDetails"), inp.mode==="theory"?"当前模式（理论）":"当前模式", current, primaryAmount, p.boost, inp.cut, eliteBonus, inp.mode);
+    renderDetails(byId("theoryDetails"), "理论模式", theory, primaryAmount, p.boost, inp.cut, eliteBonus, "theory");
+
+    window.__lastSummary = summaryText(inp.mode==="theory"?"当前模式（理论）":"当前模式", current, primaryAmount, p.boost, inp.cut, eliteBonus) + "\n\n" +
+      summaryText("理论模式", theory, primaryAmount, p.boost, inp.cut, eliteBonus);
+  }
+
+  // Events
+  document.querySelectorAll("input,select").forEach(el => {
+    el.addEventListener("change", () => { syncPrimary(); persist(); });
+    el.addEventListener("input", () => { syncPrimary(); persist(); });
+  });
+  document.querySelectorAll("input[name=mode]").forEach(el => el.addEventListener("change", runCalc));
+  byId("calcBtn").addEventListener("click", runCalc);
+  byId("sampleSoloGold").addEventListener("click", () => setExample("soloGold"));
+  byId("sampleSoloMix").addEventListener("click", () => setExample("soloMix"));
+  byId("sampleDuoGold").addEventListener("click", () => setExample("duoGold"));
+  byId("copySummary").addEventListener("click", async () => {
+    const text = window.__lastSummary || "未计算";
+    try{
+      await navigator.clipboard.writeText(text);
+      byId("copySummary").textContent = "已复制";
+      setTimeout(() => byId("copySummary").textContent = "复制摘要", 1200);
+    }catch(e){
+      alert("复制失败，请手动复制结果区。");
+    }
+  });
+  byId("saveState").addEventListener("click", () => {
+    persist();
+    byId("saveState").textContent = "已保存";
+    setTimeout(() => byId("saveState").textContent = "保存本页配置", 1200);
+  });
+  byId("resetState").addEventListener("click", () => {
+    localStorage.removeItem("cppc_v35_state");
+    location.reload();
+  });
+
+  restore();
+  syncPrimary();
+  runCalc();
+})();
+</script>
+</body>
+</html>
